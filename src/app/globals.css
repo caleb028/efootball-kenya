@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-efootball: "Chakra Petch", "Oxanium", "Montserrat", sans-serif;
+  --font-display: "Chakra Petch", "Oxanium", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-rajdhani: "Chakra Petch", "Rajdhani", sans-serif;
+  --font-space-grotesk: "Space Grotesk", sans-serif;
+  --font-barlow-condensed: "Barlow Condensed", sans-serif;
+
+  /* Exact Logo Color Palette (Sampled Directly from Arena Logo) */
+  --brand-royal: #00189D;        /* True Logo Royal Blue rgb(0, 24, 157) */
+  --brand-yellow: #FFFF00;       /* True Logo Electric Yellow rgb(255, 255, 0) */
+  --brand-navy: #001275;         /* Deep Logo Stadium Blue */
+  --brand-dark-blue: #001582;    /* Card Surfaces */
+  --brand-surface: #001EAB;      /* Elevated Surfaces */
+  --brand-pitch-green: #00D044;
+  --brand-cyan: #00D2FF;
+  --brand-red: #FF1E27;
+  --brand-white: #FFFFFF;
+  --brand-grey: #B0C2E8;
+  --brand-border: #002BDC;
+}
+
+html {
+  background-color: #00189D;
+  color: #FFFFFF;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #00189D;
+  color: #FFFFFF;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+}
+
+/* Reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom Esports Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #001275;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #002BDC;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFFF00;
+}
+
+@layer components {
+  /* Exact Logo Fluorescent Yellow Primary Action Button */
+  .btn-yellow {
+    @apply inline-flex items-center justify-center gap-2 bg-[#FFFF00] text-[#00189D] font-display font-extrabold uppercase tracking-wider px-6 py-3 rounded-xl shadow-ef-yellow hover:bg-[#FFF833] hover:scale-[1.02] active:scale-[0.99] transition-all duration-150;
+  }
+
+  /* Royal Blue Action Button */
+  .btn-royal,
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-[#0025D0] text-white font-display font-extrabold uppercase tracking-wider px-6 py-3 rounded-xl border border-white/25 shadow-ef-blue hover:bg-[#0030FF] hover:border-[#FFFF00] hover:scale-[1.02] active:scale-[0.99] transition-all duration-150;
+  }
+
+  /* Outline Action Button with Logo Styling */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 bg-[#001582]/90 text-white font-display font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl border border-[#002BDC] hover:border-[#FFFF00] hover:text-[#FFFF00] active:scale-[0.99] transition-all duration-150;
+  }
+
+  /* Pitch Green Action Button */
+  .btn-pitch {
+    @apply inline-flex items-center justify-center gap-2 bg-[#00D044] text-[#00189D] font-display font-extrabold uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-ef-green hover:bg-[#00E54B] active:scale-[0.99] transition-all duration-150;
+  }
+
+  /* Sleek Modern Logo-Themed Esports Card */
+  .esports-card,
+  .card-esports {
+    @apply bg-[#001582]/95 border border-[#002BDC] rounded-2xl shadow-esports-card transition-all duration-200;
+  }
+
+  .esports-card-hover {
+    @apply bg-[#001582]/95 border border-[#002BDC] rounded-2xl shadow-esports-card hover:border-[#FFFF00] hover:shadow-ef-yellow/20 hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  /* Input Fields */
+  .esports-input,
+  .input-field {
+    @apply w-full bg-[#001275] border border-[#002BDC] rounded-xl px-4 py-3 text-sm text-white placeholder-[#8A9ECC] focus:outline-none focus:border-[#FFFF00] focus:ring-1 focus:ring-[#FFFF00] transition-colors;
+  }
+
+  /* Status Badges Matching Logo Yellow & Blue */
+  .esports-badge-yellow,
+  .badge-yellow {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#FFFF00] text-[#00189D] font-display font-extrabold text-xs uppercase tracking-wider shadow-sm;
+  }
+
+  .esports-badge-blue,
+  .badge-blue {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#0025D0] text-white font-display font-extrabold text-xs uppercase tracking-wider border border-[#FFFF00]/40;
+  }
+
+  .badge-green {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#00D044] text-[#00189D] font-display font-extrabold text-xs uppercase tracking-wider;
+  }
+
+  .badge-red {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#FF1E27] text-white font-display font-extrabold text-xs uppercase tracking-wider;
+  }
+}

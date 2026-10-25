@@ -1,0 +1,25 @@
+{
+  "name": "eFootball ARENA Kenya — Play. Compete. Belong.",
+  "short_name": "eFootball ARENA",
+  "description": "Kenya's premier competitive eFootball gaming and tournament platform. Compete across Mobile, PlayStation, Xbox, and PC, earn verified national Elo rankings, and join clans across all 47 counties.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#00189D",
+  "theme_color": "#00189D",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/logo.png",
+      "sizes": "1024x409",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["games", "sports", "entertainment"]
+}
