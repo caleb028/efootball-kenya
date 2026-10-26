@@ -154,11 +154,11 @@ export function TournamentDetailClient({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="esports-badge-yellow">
-                {tournament.status.replace(/_/g, " ")}
+                {(tournament.status || "PUBLISHED").replace(/_/g, " ")}
               </span>
-              <span className="esports-badge-blue">{tournament.platform}</span>
+              <span className="esports-badge-blue">{tournament.platform || "ALL"}</span>
               <span className="esports-badge-blue">
-                {tournament.format.replace(/_/g, " ")}
+                {(tournament.format || "SINGLE_ELIMINATION").replace(/_/g, " ")}
               </span>
               <span className="text-xs text-brand-grey font-semibold">
                 Region: {tournament.region}
@@ -603,7 +603,7 @@ export function TournamentDetailClient({
                                       : "bg-brand-navy text-brand-yellow"
                                   }`}
                                 >
-                                  {m.status.replace(/_/g, " ")}
+                                  {(m.status || "PENDING").replace(/_/g, " ")}
                                 </span>
                               </div>
 

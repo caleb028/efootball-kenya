@@ -1,20 +1,28 @@
 import React from "react";
 import Link from "next/link";
-import { Users, MapPin, ShieldCheck, Trophy } from "lucide-react";
+import { Users, MapPin, ShieldCheck } from "lucide-react";
 import { getLeaderboard } from "@/lib/services/rankings-players";
 import { KENYA_COUNTIES, PLATFORMS } from "@/lib/constants/kenya";
 
 export default function PlayersDirectoryPage({
   searchParams,
 }: {
-  searchParams: { county?: string; platform?: string; q?: string };
+  searchParams?: { county?: string; platform?: string; q?: string };
 }) {
-  const players = getLeaderboard({
-    county: searchParams.county,
-    platform: searchParams.platform,
-    search: searchParams.q,
-    limit: 60,
-  });
+  const params = searchParams || {};
+
+  let players: ReturnType<typeof getLeaderboard> = [];
+  try {
+    players = getLeaderboard({
+      county: typeof params.county === "string" ? params.county : undefined,
+      platform: typeof params.platform === "string" ? params.platform : undefined,
+      search: typeof params.q === "string" ? params.q : undefined,
+      limit: 60,
+    });
+  } catch (err) {
+    console.error("PlayersDirectoryPage: Error getting leaderboard:", err);
+    players = [];
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -37,13 +45,13 @@ export default function PlayersDirectoryPage({
         <input
           type="search"
           name="q"
-          defaultValue={searchParams.q || ""}
+          defaultValue={params.q || ""}
           placeholder="Search player username..."
           className="esports-input"
         />
         <select
           name="county"
-          defaultValue={searchParams.county || "ALL"}
+          defaultValue={params.county || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All 47 Counties</option>
@@ -55,7 +63,7 @@ export default function PlayersDirectoryPage({
         </select>
         <select
           name="platform"
-          defaultValue={searchParams.platform || "ALL"}
+          defaultValue={params.platform || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All Platforms</option>
@@ -91,7 +99,7 @@ export default function PlayersDirectoryPage({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-brand-royal border border-brand-yellow/60 flex items-center justify-center font-display font-bold text-xl text-brand-yellow">
-                    {p.username.slice(0, 2).toUpperCase()}
+                    {(p.username || "P").slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <div className="font-display font-bold text-xl text-white flex items-center gap-1.5">
@@ -102,7 +110,7 @@ export default function PlayersDirectoryPage({
                     </div>
                     <div className="text-xs text-brand-grey flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-brand-yellow" />
-                      {p.county} • {p.platform}
+                      {p.county || "Kenya"} • {p.platform || "ALL"}
                     </div>
                   </div>
                 </div>

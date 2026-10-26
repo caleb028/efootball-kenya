@@ -140,7 +140,7 @@ export default function CommunityPage() {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <span className="esports-badge-blue">
-                    {ev.eventType.replace(/_/g, " ")}
+                    {(ev.eventType || "EVENT").replace(/_/g, " ")}
                   </span>
                   <span className="font-bold text-white">{ev.actorUsername}</span>
                   <span className="text-brand-grey">• {ev.actorCounty}</span>

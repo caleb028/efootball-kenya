@@ -17,7 +17,7 @@ import { KENYA_COUNTIES, KENYA_UNIVERSITIES, PLATFORMS } from "@/lib/constants/k
 export default function RankingsPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams?: {
     tab?: string;
     county?: string;
     platform?: string;
@@ -25,7 +25,8 @@ export default function RankingsPage({
     q?: string;
   };
 }) {
-  const activeTab = searchParams.tab || "NATIONAL";
+  const params = searchParams || {};
+  const activeTab = (typeof params.tab === "string" && params.tab) || "NATIONAL";
   const isClanTab = activeTab === "CLANS";
   const isUniversityTab = activeTab === "UNIVERSITY";
 
@@ -36,26 +37,33 @@ export default function RankingsPage({
       ? "PLAYSTATION"
       : activeTab === "PC"
       ? "PC"
-      : searchParams.platform;
+      : typeof params.platform === "string" ? params.platform : undefined;
 
-  const leaderboard = !isClanTab
-    ? getLeaderboard({
-        county: searchParams.county,
+  let leaderboard: ReturnType<typeof getLeaderboard> = [];
+  let clanLeaderboard: ReturnType<typeof listClans> = [];
+
+  try {
+    if (!isClanTab) {
+      leaderboard = getLeaderboard({
+        county: typeof params.county === "string" ? params.county : undefined,
         platform: platformFilter,
         universityOnly: isUniversityTab,
-        university: searchParams.university,
-        search: searchParams.q,
+        university: typeof params.university === "string" ? params.university : undefined,
+        search: typeof params.q === "string" ? params.q : undefined,
         limit: 100,
-      })
-    : [];
-
-  const clanLeaderboard = isClanTab
-    ? listClans({
-        county: searchParams.county,
-        search: searchParams.q,
+      });
+    } else {
+      clanLeaderboard = listClans({
+        county: typeof params.county === "string" ? params.county : undefined,
+        search: typeof params.q === "string" ? params.q : undefined,
         limit: 100,
-      })
-    : [];
+      });
+    }
+  } catch (err) {
+    console.error("RankingsPage: Error fetching leaderboard:", err);
+    leaderboard = [];
+    clanLeaderboard = [];
+  }
 
   const boardTabs = [
     { id: "NATIONAL", label: "National Rankings" },
@@ -121,7 +129,7 @@ export default function RankingsPage({
         <input
           type="search"
           name="q"
-          defaultValue={searchParams.q || ""}
+          defaultValue={params.q || ""}
           placeholder={isClanTab ? "Search clan name or tag..." : "Search player username..."}
           className="esports-input"
         />
@@ -129,7 +137,7 @@ export default function RankingsPage({
         {/* All 47 Kenyan Counties Selector (Section 13) */}
         <select
           name="county"
-          defaultValue={searchParams.county || "ALL"}
+          defaultValue={params.county || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All 47 Kenyan Counties</option>
@@ -158,7 +166,7 @@ export default function RankingsPage({
         {isUniversityTab ? (
           <select
             name="university"
-            defaultValue={searchParams.university || "ALL"}
+            defaultValue={params.university || "ALL"}
             className="esports-input"
           >
             <option value="ALL">All Kenyan Universities</option>

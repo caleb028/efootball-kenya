@@ -226,7 +226,7 @@ export function MatchRoomClient({
                 : "bg-brand-yellow text-brand-navy"
             }`}
           >
-            {match.status.replace(/_/g, " ")}
+            {(match.status || "SCHEDULED").replace(/_/g, " ")}
           </span>
         </div>
       </div>
@@ -582,7 +582,7 @@ export function MatchRoomClient({
                     className="p-3.5 rounded-lg bg-brand-error/15 border border-brand-error/50 text-xs space-y-2"
                   >
                     <div className="flex justify-between font-bold">
-                      <span className="text-brand-yellow">{d.category.replace(/_/g, " ")}</span>
+                      <span className="text-brand-yellow">{(d.category || "GENERAL").replace(/_/g, " ")}</span>
                       <span className="uppercase text-white">{d.status}</span>
                     </div>
                     <p className="text-white/90">{d.description}</p>

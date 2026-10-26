@@ -348,7 +348,7 @@ export function PlayerDashboardClient({
                         >
                           <div>
                             <div className="font-bold text-white text-sm">{t.title}</div>
-                            <div className="text-brand-grey">{t.format.replace(/_/g, " ")}</div>
+                            <div className="text-brand-grey">{(t.format || "SINGLE_ELIMINATION").replace(/_/g, " ")}</div>
                           </div>
                           <span className="esports-badge-yellow">{t.registrationStatus}</span>
                         </Link>
@@ -379,7 +379,7 @@ export function PlayerDashboardClient({
                       <div>
                         <div className="font-display font-bold text-lg text-white">{t.title}</div>
                         <div className="text-xs text-brand-grey">
-                          {t.platform} • {t.format.replace(/_/g, " ")} • Status: {t.status}
+                          {t.platform} • {(t.format || "SINGLE_ELIMINATION").replace(/_/g, " ")} • Status: {t.status}
                         </div>
                       </div>
                       <span className="esports-badge-yellow">{t.registrationStatus}</span>

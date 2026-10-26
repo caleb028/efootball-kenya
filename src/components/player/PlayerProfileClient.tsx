@@ -367,7 +367,7 @@ export function PlayerProfileClient({
                 <div>
                   <div className="font-display font-bold text-lg text-white">{t.title}</div>
                   <div className="text-xs text-brand-grey">
-                    {t.format.replace(/_/g, " ")} • {t.platform}
+                    {(t.format || "SINGLE_ELIMINATION").replace(/_/g, " ")} • {t.platform || "ALL"}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

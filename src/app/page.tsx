@@ -236,14 +236,14 @@ export default function HomePage() {
                             : "bg-[#001275] text-slate-300"
                         }`}
                       >
-                        {t.status.replace(/_/g, " ")}
+                        {(t.status || "PUBLISHED").replace(/_/g, " ")}
                       </span>
                     </div>
                     <h3 className="font-display font-extrabold text-xl uppercase text-white leading-snug">
                       {t.title}
                     </h3>
                     <p className="text-xs text-slate-200 mt-1">
-                      {t.format.replace(/_/g, " ")} • {t.region}
+                      {(t.format || "SINGLE_ELIMINATION").replace(/_/g, " ")} • {t.region || "National"}
                     </p>
                   </div>
 

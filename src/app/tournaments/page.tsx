@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Trophy, Plus, Users, Calendar, Shield, Gamepad2 } from "lucide-react";
+import { Trophy, Plus } from "lucide-react";
 import { listTournaments } from "@/lib/services/tournaments";
 import { getCurrentUser, hasAnyRole } from "@/lib/services/auth";
 import {
@@ -12,7 +12,7 @@ import {
 export default function TournamentsPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams?: {
     status?: string;
     platform?: string;
     category?: string;
@@ -20,16 +20,30 @@ export default function TournamentsPage({
     q?: string;
   };
 }) {
-  const user = getCurrentUser();
+  const params = searchParams || {};
+
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch (err) {
+    console.error("TournamentsPage: Error retrieving session:", err);
+  }
+
   const canCreate = hasAnyRole(user, ["ORGANISER", "TOURNAMENT_ADMIN", "SUPER_ADMIN"]);
 
-  const tournaments = listTournaments({
-    status: searchParams.status,
-    platform: searchParams.platform,
-    category: searchParams.category,
-    format: searchParams.format,
-    search: searchParams.q,
-  });
+  let tournaments: ReturnType<typeof listTournaments> = [];
+  try {
+    tournaments = listTournaments({
+      status: typeof params.status === "string" ? params.status : undefined,
+      platform: typeof params.platform === "string" ? params.platform : undefined,
+      category: typeof params.category === "string" ? params.category : undefined,
+      format: typeof params.format === "string" ? params.format : undefined,
+      search: typeof params.q === "string" ? params.q : undefined,
+    });
+  } catch (err) {
+    console.error("TournamentsPage: Error listing tournaments:", err);
+    tournaments = [];
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -62,14 +76,14 @@ export default function TournamentsPage({
         <input
           type="search"
           name="q"
-          defaultValue={searchParams.q || ""}
+          defaultValue={params.q || ""}
           placeholder="Search by title or region..."
           className="esports-input"
         />
 
         <select
           name="platform"
-          defaultValue={searchParams.platform || "ALL"}
+          defaultValue={params.platform || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All Platforms</option>
@@ -82,7 +96,7 @@ export default function TournamentsPage({
 
         <select
           name="category"
-          defaultValue={searchParams.category || "ALL"}
+          defaultValue={params.category || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All Categories</option>
@@ -95,7 +109,7 @@ export default function TournamentsPage({
 
         <select
           name="format"
-          defaultValue={searchParams.format || "ALL"}
+          defaultValue={params.format || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All Formats</option>
@@ -139,6 +153,21 @@ export default function TournamentsPage({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tournaments.map((t) => {
             const isOpen = t.status === "REGISTRATION_OPEN" || t.status === "PUBLISHED";
+            const formattedDate = (() => {
+              try {
+                const d = new Date(t.startDate);
+                return isNaN(d.getTime())
+                  ? "Upcoming"
+                  : d.toLocaleDateString("en-KE", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+              } catch {
+                return "Upcoming";
+              }
+            })();
+
             return (
               <div
                 key={t.id}
@@ -147,7 +176,7 @@ export default function TournamentsPage({
                 <div className="bg-gradient-to-r from-brand-royal to-brand-navy p-5 border-b border-brand-royal/50">
                   <div className="flex items-center justify-between gap-2 mb-2.5">
                     <span className="px-2.5 py-0.5 rounded bg-brand-navy/85 text-white text-xs font-bold uppercase">
-                      {t.platform}
+                      {t.platform || "ALL"}
                     </span>
                     <span
                       className={`px-2.5 py-0.5 rounded text-xs font-display font-bold uppercase ${
@@ -158,46 +187,41 @@ export default function TournamentsPage({
                           : "bg-brand-navy text-brand-grey"
                       }`}
                     >
-                      {t.status.replace(/_/g, " ")}
+                      {(t.status || "PUBLISHED").replace(/_/g, " ")}
                     </span>
                   </div>
                   <h2 className="font-display font-bold text-2xl uppercase text-white">
-                    {t.title}
+                    {t.title || "Tournament"}
                   </h2>
                   <p className="text-xs text-white/80 mt-1">
-                    {t.category.replace(/_/g, " ")} • {t.format.replace(/_/g, " ")}
+                    {(t.category || "GENERAL").replace(/_/g, " ")} •{" "}
+                    {(t.format || "SINGLE_ELIMINATION").replace(/_/g, " ")}
                   </p>
                 </div>
 
                 <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
-                  <p className="text-xs text-brand-grey line-clamp-2">{t.description}</p>
+                  <p className="text-xs text-brand-grey line-clamp-2">{t.description || ""}</p>
 
                   <div className="space-y-2 text-xs text-brand-grey border-t border-brand-royal/30 pt-3">
                     <div className="flex justify-between">
                       <span>Region:</span>
-                      <span className="text-white font-semibold">{t.region}</span>
+                      <span className="text-white font-semibold">{t.region || "National"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Kickoff Date:</span>
-                      <span className="text-white font-semibold">
-                        {new Date(t.startDate).toLocaleDateString("en-KE", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
+                      <span className="text-white font-semibold">{formattedDate}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Registered Slots:</span>
                       <span className="text-brand-yellow font-display font-bold text-sm">
-                        {t.registeredCount} / {t.maxParticipants}
-                        {t.waitlistCount > 0 ? ` (+${t.waitlistCount} waitlist)` : ""}
+                        {t.registeredCount ?? 0} / {t.maxParticipants ?? 16}
+                        {(t.waitlistCount ?? 0) > 0 ? ` (+${t.waitlistCount} waitlist)` : ""}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Entry:</span>
                       <span className="text-white font-medium truncate max-w-[180px]">
-                        {t.entryRequirement}
+                        {t.entryRequirement || "Free Entry"}
                       </span>
                     </div>
                   </div>

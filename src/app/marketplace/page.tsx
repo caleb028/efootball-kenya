@@ -1,18 +1,26 @@
 import React from "react";
 import Link from "next/link";
-import { ShoppingBag, Plus, ShieldCheck, AlertTriangle, Package } from "lucide-react";
+import { ShoppingBag, Plus, ShieldCheck, Package } from "lucide-react";
 import { listMarketplaceListings } from "@/lib/services/marketplace-finance-admin";
 import { MARKETPLACE_PERMITTED_CATEGORIES } from "@/lib/constants/kenya";
 
 export default function MarketplacePage({
   searchParams,
 }: {
-  searchParams: { category?: string; q?: string };
+  searchParams?: { category?: string; q?: string };
 }) {
-  const listings = listMarketplaceListings({
-    categorySlug: searchParams.category,
-    search: searchParams.q,
-  });
+  const params = searchParams || {};
+
+  let listings: ReturnType<typeof listMarketplaceListings> = [];
+  try {
+    listings = listMarketplaceListings({
+      categorySlug: typeof params.category === "string" ? params.category : undefined,
+      search: typeof params.q === "string" ? params.q : undefined,
+    });
+  } catch (err) {
+    console.error("MarketplacePage: Error listing marketplace items:", err);
+    listings = [];
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -64,13 +72,13 @@ export default function MarketplacePage({
         <input
           type="search"
           name="q"
-          defaultValue={searchParams.q || ""}
+          defaultValue={params.q || ""}
           placeholder="Search coaching, controllers, clan jerseys..."
           className="esports-input"
         />
         <select
           name="category"
-          defaultValue={searchParams.category || "ALL"}
+          defaultValue={params.category || "ALL"}
           className="esports-input"
         >
           <option value="ALL">All Permitted Categories</option>
@@ -110,22 +118,22 @@ export default function MarketplacePage({
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="esports-badge-blue">{l.categoryName}</span>
+                  <span className="esports-badge-blue">{l.categoryName || "Gaming Gear"}</span>
                   <span className="text-brand-success font-bold uppercase">
-                    {l.availability.replace(/_/g, " ")}
+                    {(l.availability || "AVAILABLE").replace(/_/g, " ")}
                   </span>
                 </div>
                 <h2 className="font-display font-bold text-2xl text-white leading-snug">
-                  {l.title}
+                  {l.title || "Listing"}
                 </h2>
-                <p className="text-xs text-brand-grey line-clamp-2">{l.description}</p>
+                <p className="text-xs text-brand-grey line-clamp-2">{l.description || ""}</p>
               </div>
 
               <div className="pt-4 border-t border-brand-royal/30 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-brand-grey">Seller</div>
                   <div className="text-xs font-bold text-white flex items-center gap-1">
-                    {l.sellerUsername} ({l.sellerCounty})
+                    {l.sellerUsername || "Player"} ({l.sellerCounty || "Kenya"})
                     {l.sellerVerified && (
                       <ShieldCheck className="w-3.5 h-3.5 text-brand-yellow" />
                     )}
@@ -134,7 +142,7 @@ export default function MarketplacePage({
                 <div className="text-right">
                   <div className="text-[10px] uppercase text-brand-grey">Price</div>
                   <div className="font-display font-bold text-2xl text-brand-yellow">
-                    KES {l.priceKes.toLocaleString()}
+                    KES {(l.priceKes ?? 0).toLocaleString()}
                   </div>
                 </div>
               </div>

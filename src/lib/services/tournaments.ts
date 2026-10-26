@@ -133,7 +133,7 @@ export function createTournament(input: CreateTournamentInput) {
       createId("act"),
       input.organiserId,
       `New Tournament Announced: ${input.title.trim()}`,
-      `Registration is now open for ${input.title.trim()} (${input.platform} • ${input.format.replace(/_/g, " ")}).`,
+      `Registration is now open for ${input.title.trim()} (${input.platform} • ${(input.format || "SINGLE_ELIMINATION").replace(/_/g, " ")}).`,
       `/tournaments/${slug}`,
       now
     );

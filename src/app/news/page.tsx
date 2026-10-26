@@ -6,9 +6,19 @@ import { listArticles } from "@/lib/services/clans-community";
 export default function NewsPage({
   searchParams,
 }: {
-  searchParams: { category?: string };
+  searchParams?: { category?: string };
 }) {
-  const articles = listArticles({ categorySlug: searchParams.category });
+  const params = searchParams || {};
+
+  let articles: ReturnType<typeof listArticles> = [];
+  try {
+    articles = listArticles({
+      categorySlug: typeof params.category === "string" ? params.category : undefined,
+    });
+  } catch (err) {
+    console.error("NewsPage: Error listing articles:", err);
+    articles = [];
+  }
 
   const categories = [
     { slug: "ALL", name: "All News" },
@@ -20,7 +30,7 @@ export default function NewsPage({
     { slug: "community-news", name: "Community News" },
   ];
 
-  const activeCategory = searchParams.category || "ALL";
+  const activeCategory = (typeof params.category === "string" && params.category) || "ALL";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -64,32 +74,41 @@ export default function NewsPage({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {articles.map((a) => (
-            <Link
-              key={a.id}
-              href={`/news/${a.slug}`}
-              className="esports-card-hover p-6 flex flex-col justify-between gap-4 block"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="esports-badge-blue">{a.categoryName}</span>
-                  <span className="text-brand-grey">
-                    {new Date(a.publishedAt).toLocaleDateString("en-KE")}
+          {articles.map((a) => {
+            const formattedDate = (() => {
+              try {
+                const d = new Date(a.publishedAt);
+                return isNaN(d.getTime()) ? "Recent" : d.toLocaleDateString("en-KE");
+              } catch {
+                return "Recent";
+              }
+            })();
+
+            return (
+              <Link
+                key={a.id}
+                href={`/news/${a.slug}`}
+                className="esports-card-hover p-6 flex flex-col justify-between gap-4 block"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="esports-badge-blue">{a.categoryName || "eFootball"}</span>
+                    <span className="text-brand-grey">{formattedDate}</span>
+                  </div>
+                  <h2 className="font-display font-bold text-2xl text-white leading-snug">
+                    {a.title || "News"}
+                  </h2>
+                  <p className="text-xs text-brand-grey line-clamp-3">{a.excerpt || ""}</p>
+                </div>
+                <div className="pt-3 border-t border-brand-royal/30 flex items-center justify-between text-xs text-brand-yellow font-bold">
+                  <span>By {a.authorUsername || "Editor"}</span>
+                  <span className="inline-flex items-center gap-1">
+                    Read Article <ArrowRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
-                <h2 className="font-display font-bold text-2xl text-white leading-snug">
-                  {a.title}
-                </h2>
-                <p className="text-xs text-brand-grey line-clamp-3">{a.excerpt}</p>
-              </div>
-              <div className="pt-3 border-t border-brand-royal/30 flex items-center justify-between text-xs text-brand-yellow font-bold">
-                <span>By {a.authorUsername}</span>
-                <span className="inline-flex items-center gap-1">
-                  Read Article <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
