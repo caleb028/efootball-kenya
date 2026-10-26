@@ -26,28 +26,13 @@ export function Logo({ variant = "horizontal", size = "md", className = "" }: Lo
 
   if (variant === "icon") {
     return (
-      <div className={`relative inline-flex items-center justify-center shrink-0 overflow-hidden rounded-2xl select-none bg-[#00189D] ${className}`}>
-        <svg
-          viewBox="0 0 100 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className={iconDimensions}
-          aria-label="eFootball Arena Logo Icon"
-        >
-          {/* Official eFootball Neon Yellow Emblem */}
-          {/* Top Arc */}
-          <path
-            d="M50 18C34.5 18 21.5 29 18.5 43H81.5C78.5 29 65.5 18 50 18Z"
-            fill="#FFFF00"
-          />
-          {/* Middle Bar */}
-          <rect x="11" y="47" width="78" height="9" rx="4.5" fill="#FFFF00" />
-          {/* Bottom Arc */}
-          <path
-            d="M18.5 60C21.5 74 34.5 85 50 85C65.5 85 78.5 74 81.5 60H18.5Z"
-            fill="#FFFF00"
-          />
-        </svg>
+      <div className={`relative inline-flex items-center justify-center shrink-0 overflow-hidden rounded-2xl select-none shadow-lg ${className}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/app-icon.png"
+          alt="eFootball ARENA Mobile App Icon"
+          className={`${iconDimensions} object-cover rounded-2xl drop-shadow-[0_4px_16px_rgba(0,24,157,0.7)]`}
+        />
       </div>
     );
   }

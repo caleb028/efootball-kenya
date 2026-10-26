@@ -172,6 +172,26 @@ export default function HomePage() {
                     Leaderboard
                   </Link>
                 </div>
+
+                {/* Mobile App & PWA Banner */}
+                <div className="mt-3.5 bg-[#001275]/90 border border-[#002BDC] rounded-xl p-3 flex items-center gap-3.5 shadow-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/icons/icon-96x96.png"
+                    alt="eFootball ARENA Mobile App Icon"
+                    className="w-12 h-12 rounded-xl object-cover border border-[#FFFF00]/70 shadow-[0_0_12px_rgba(255,255,0,0.3)] shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-display font-extrabold uppercase text-white flex items-center gap-1.5">
+                      <span>Official Mobile App & PWA</span>
+                      <span className="w-2 h-2 rounded-full bg-[#00D044]" />
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Install on Android, iOS & PC for instant match alerts
+                    </p>
+                  </div>
+                  <span className="badge-yellow text-[10px] shrink-0 font-bold">PWA Ready</span>
+                </div>
               </div>
             </div>
           </div>

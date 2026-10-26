@@ -258,6 +258,24 @@ export function Navbar({
             />
 
             <div className="relative z-50 lg:hidden bg-[#001275] border-t border-[#002BDC] px-4 pt-3 pb-6 space-y-3 max-h-[85vh] overflow-y-auto shadow-2xl">
+              {/* Mobile App Branding Header */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-[#00189D]/80 border border-[#002BDC]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icons/icon-72x72.png"
+                  alt="eFootball ARENA App"
+                  className="w-10 h-10 rounded-xl object-cover border border-[#FFFF00]/70 shadow shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="font-display font-extrabold text-sm uppercase text-white truncate">
+                    eFootball ARENA Kenya
+                  </div>
+                  <div className="text-[10px] text-[#FFFF00] font-bold tracking-wide">
+                    Play. Compete. Belong.
+                  </div>
+                </div>
+              </div>
+
               <nav className="space-y-1">
                 {navItems.map((item) => {
                   const active =

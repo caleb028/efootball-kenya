@@ -1,6 +1,16 @@
 // eFootball ARENA Kenya — Progressive Web App Service Worker
-const CACHE_NAME = "efootball-arena-pwa-v2";
-const STATIC_ASSETS = ["/", "/manifest.json", "/icon.svg", "/brand/logo.png"];
+const CACHE_NAME = "efootball-arena-pwa-v3";
+const STATIC_ASSETS = [
+  "/",
+  "/manifest.json",
+  "/favicon.ico",
+  "/favicon.png",
+  "/apple-touch-icon.png",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
+  "/brand/app-icon.png",
+  "/brand/logo.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
