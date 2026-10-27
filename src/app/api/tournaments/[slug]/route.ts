@@ -5,6 +5,7 @@ import {
   registerForTournament,
   withdrawFromTournament,
   generateTournamentBracketAndStart,
+  importCompetingTeamsAndGenerateFixtures,
   postTournamentAnnouncement,
 } from "@/lib/services/tournaments";
 
@@ -33,13 +34,28 @@ export async function POST(
     const action = String(body.action || "REGISTER");
 
     if (action === "REGISTER") {
-      const result = registerForTournament(params.slug, user);
+      const teamName = body.teamName ? String(body.teamName).trim() : undefined;
+      const result = registerForTournament(params.slug, user, teamName);
       return NextResponse.json({
         ...result,
         message:
           result.status === "CONFIRMED"
-            ? "Registration confirmed!"
+            ? `Registration confirmed! Team: ${teamName || user.username}`
             : "Tournament is full — you have been added to the official waitlist.",
+      });
+    }
+
+    if (action === "IMPORT_TEAMS_AND_GENERATE_FIXTURES") {
+      let teams: string[] = [];
+      if (Array.isArray(body.teams)) {
+        teams = body.teams.map(String).map((s: string) => s.trim()).filter(Boolean);
+      } else if (typeof body.teams === "string") {
+        teams = body.teams.split(/[\n,;]+/).map((s: string) => s.trim()).filter(Boolean);
+      }
+      const tournament = importCompetingTeamsAndGenerateFixtures(params.slug, teams, user);
+      return NextResponse.json({
+        tournament,
+        message: `Imported ${teams.length} competing teams and generated all fixtures! Competition is now IN PROGRESS.`,
       });
     }
 

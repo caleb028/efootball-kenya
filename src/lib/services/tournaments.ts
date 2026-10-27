@@ -146,6 +146,18 @@ export function createTournament(input: CreateTournamentInput) {
       details: `Created tournament ${input.title.trim()} (${input.format})`,
     });
 
+    // Auto-grant ORGANISER role to creator so any user can host and manage competitions
+    const hasOrgRole = db
+      .prepare(`SELECT id FROM user_roles WHERE user_id = ? AND role = 'ORGANISER'`)
+      .get(input.organiserId);
+    if (!hasOrgRole) {
+      db.prepare(`INSERT INTO user_roles (id, user_id, role, granted_at) VALUES (?, ?, 'ORGANISER', ?)`).run(
+        createId("urole"),
+        input.organiserId,
+        now
+      );
+    }
+
     db.exec("COMMIT");
     return getTournamentBySlugOrId(slug)!;
   } catch (err) {
@@ -264,7 +276,7 @@ export function getTournamentBySlugOrId(slugOrId: string) {
   const registrations = db
     .prepare(`
       SELECT
-        tr.id, tr.user_id, tr.status, tr.registered_at,
+        tr.id, tr.user_id, tr.team_name, tr.status, tr.registered_at,
         u.username, p.display_name, p.county, p.platform, p.avatar_url,
         COALESCE(r.rating, 1200) as rating,
         tp.seed
@@ -324,6 +336,7 @@ export function getTournamentBySlugOrId(slugOrId: string) {
       userId: r.user_id,
       username: r.username,
       displayName: r.display_name || r.username,
+      teamName: r.team_name || r.display_name || r.username,
       county: r.county || "Nairobi",
       platform: r.platform || "MOBILE",
       rating: Number(r.rating ?? 1200),
@@ -337,6 +350,7 @@ export function getTournamentBySlugOrId(slugOrId: string) {
       userId: r.user_id,
       username: r.username,
       displayName: r.display_name || r.username,
+      teamName: r.team_name || r.display_name || r.username,
       county: r.county || "Nairobi",
       platform: r.platform || "MOBILE",
       rating: Number(r.rating ?? 1200),
@@ -440,7 +454,7 @@ export function getTournamentBySlugOrId(slugOrId: string) {
  * Register a player for a tournament.
  * Enforces eligibility, duplicate prevention, slot capacity, and automatic waitlist overflow.
  */
-export function registerForTournament(tournamentIdOrSlug: string, user: AuthenticatedUser) {
+export function registerForTournament(tournamentIdOrSlug: string, user: AuthenticatedUser, teamName?: string) {
   const db = getDb();
   const tournament = getTournamentBySlugOrId(tournamentIdOrSlug);
   if (!tournament) {
@@ -484,18 +498,19 @@ export function registerForTournament(tournamentIdOrSlug: string, user: Authenti
   const confirmedCount = Number(confirmedCountRow.cnt);
   const newStatus = confirmedCount < tournament.maxParticipants ? "CONFIRMED" : "WAITLISTED";
   const now = new Date().toISOString();
+  const effectiveTeamName = teamName?.trim() || user.username;
 
   db.exec("BEGIN");
   try {
     if (existing) {
       db.prepare(
-        `UPDATE tournament_registrations SET status = ?, registered_at = ?, withdrawn_at = NULL WHERE id = ?`
-      ).run(newStatus, now, existing.id);
+        `UPDATE tournament_registrations SET status = ?, team_name = COALESCE(?, team_name), registered_at = ?, withdrawn_at = NULL WHERE id = ?`
+      ).run(newStatus, effectiveTeamName, now, existing.id);
     } else {
       db.prepare(`
-        INSERT INTO tournament_registrations (id, tournament_id, user_id, status, registered_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(createId("reg"), tournament.id, user.id, newStatus, now);
+        INSERT INTO tournament_registrations (id, tournament_id, user_id, team_name, status, registered_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(createId("reg"), tournament.id, user.id, effectiveTeamName, newStatus, now);
     }
 
     db.prepare(`
@@ -661,10 +676,18 @@ export function generateTournamentBracketAndStart(
       }
     }
 
+    const teamNameMap = new Map<string, string>();
+    const regRows = db
+      .prepare(`SELECT user_id, team_name FROM tournament_registrations WHERE tournament_id = ?`)
+      .all(tournament.id) as any[];
+    for (const r of regRows) {
+      if (r.team_name) teamNameMap.set(r.user_id, r.team_name);
+    }
+
     // Insert seeded participants
     const insertPart = db.prepare(`
-      INSERT INTO tournament_participants (id, tournament_id, user_id, seed, group_id)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO tournament_participants (id, tournament_id, user_id, team_name, seed, group_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
     const incrTourneysPlayed = db.prepare(`
       UPDATE player_ratings SET tournaments_played = tournaments_played + 1, updated_at = ?
@@ -675,6 +698,7 @@ export function generateTournamentBracketAndStart(
         createId("tpart"),
         tournament.id,
         sp.userId,
+        teamNameMap.get(sp.userId) || sp.username,
         sp.seed,
         userGroupMap.get(sp.userId) ?? null
       );
@@ -777,6 +801,107 @@ export function generateTournamentBracketAndStart(
     db.exec("ROLLBACK");
     throw err;
   }
+}
+
+/**
+ * Import or upload competing teams for a tournament/league and automatically generate fixtures.
+ */
+export function importCompetingTeamsAndGenerateFixtures(
+  tournamentIdOrSlug: string,
+  teamList: string[],
+  actor: AuthenticatedUser
+) {
+  const db = getDb();
+  const tournament = getTournamentBySlugOrId(tournamentIdOrSlug);
+  if (!tournament) throw new Error("Tournament not found.");
+
+  const isAuthorised =
+    tournament.organiserId === actor.id ||
+    hasAnyRole(actor, ["ORGANISER", "TOURNAMENT_ADMIN", "SUPER_ADMIN"]);
+  if (!isAuthorised) {
+    throw new Error("Only the tournament organiser or a Tournament Admin can upload competing teams.");
+  }
+
+  const validTeams = teamList
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  if (validTeams.length < 2) {
+    throw new Error("Please provide at least 2 competing teams to generate fixtures.");
+  }
+
+  const now = new Date().toISOString();
+
+  db.exec("BEGIN");
+  try {
+    // For each team in validTeams, resolve or create participant user
+    for (let i = 0; i < validTeams.length; i++) {
+      const teamName = validTeams[i];
+      const sanitized = teamName.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 20);
+      const teamUsername = sanitized.length >= 3 ? sanitized : `team_${i + 1}`;
+
+      let userRow = db
+        .prepare(`SELECT id, username FROM users WHERE LOWER(username) = LOWER(?)`)
+        .get(teamUsername) as { id: string; username: string } | undefined;
+
+      let userId = userRow?.id;
+      if (!userId) {
+        userId = createId("usr");
+        const dummyEmail = `${teamUsername}_${userId.slice(-6)}@efootball.ke`;
+        db.prepare(`
+          INSERT INTO users (id, username, email, status, email_verified_at, age_confirmed, terms_accepted, created_at, updated_at)
+          VALUES (?, ?, ?, 'ACTIVE', ?, 1, 1, ?, ?)
+        `).run(userId, teamUsername, dummyEmail, now, now, now);
+
+        db.prepare(`
+          INSERT INTO profiles (id, user_id, display_name, county, platform, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          createId("prf"),
+          userId,
+          teamName,
+          tournament.region || "Nairobi",
+          tournament.platform === "CROSS_PLATFORM" ? "MOBILE" : tournament.platform,
+          now,
+          now
+        );
+
+        db.prepare(`
+          INSERT INTO player_ratings (id, user_id, rating, peak_rating, matches_played, wins, draws, losses, created_at, updated_at)
+          VALUES (?, ?, 1200, 1200, 0, 0, 0, 0, ?, ?)
+        `).run(createId("prat"), userId, now, now);
+
+        db.prepare(`
+          INSERT INTO user_roles (id, user_id, role, granted_at)
+          VALUES (?, ?, 'PLAYER', ?)
+        `).run(createId("urole"), userId, now);
+      }
+
+      // Upsert registration with team_name
+      const regExisting = db
+        .prepare(`SELECT id FROM tournament_registrations WHERE tournament_id = ? AND user_id = ?`)
+        .get(tournament.id, userId) as { id: string } | undefined;
+
+      if (!regExisting) {
+        db.prepare(`
+          INSERT INTO tournament_registrations (id, tournament_id, user_id, team_name, status, registered_at)
+          VALUES (?, ?, ?, ?, 'CONFIRMED', ?)
+        `).run(createId("reg"), tournament.id, userId, teamName, now);
+      } else {
+        db.prepare(`
+          UPDATE tournament_registrations SET team_name = ?, status = 'CONFIRMED' WHERE id = ?
+        `).run(teamName, regExisting.id);
+      }
+    }
+
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+
+  // Generate automated bracket & fixtures immediately!
+  return generateTournamentBracketAndStart(tournament.id, actor);
 }
 
 /**
@@ -1545,6 +1670,135 @@ function awardAchievementsForUserInternal(db: any, userId: string, sourceId: str
       def.description,
       now
     );
+  }
+}
+
+/**
+ * Verify and finalize match directly from an AI-translated full-time match screenshot.
+ * Updates bracket progression, recalculates standings table, updates Elo, and publishes community highlight!
+ */
+export function verifyAndFinalizeMatchWithScreenshot(params: {
+  matchId: string;
+  user: AuthenticatedUser;
+  playerOneScore: number;
+  playerTwoScore: number;
+  screenshotUrl: string;
+  notes?: string;
+}) {
+  const db = getDb();
+  const match = getMatchDetail(params.matchId, params.user);
+  if (!match) throw new Error("Match not found.");
+
+  if (!match.playerOne || !match.playerTwo) {
+    throw new Error("Both players must be assigned to verify and report match scores.");
+  }
+
+  const isPlayerOne = match.playerOne.id === params.user.id;
+  const isPlayerTwo = match.playerTwo.id === params.user.id;
+  const isOrganiser =
+    match.tournamentOrganiserId === params.user.id ||
+    hasAnyRole(params.user, ["ORGANISER", "TOURNAMENT_ADMIN", "SUPER_ADMIN"]);
+
+  if (!isPlayerOne && !isPlayerTwo && !isOrganiser) {
+    throw new Error("Only match participants or tournament administrators can upload full-time score screenshots.");
+  }
+
+  if (match.status === "COMPLETED" || match.status === "WALKOVER") {
+    throw new Error(`Match is already finalized (${match.status}).`);
+  }
+
+  const p1Score = Math.floor(Number(params.playerOneScore));
+  const p2Score = Math.floor(Number(params.playerTwoScore));
+  if (isNaN(p1Score) || isNaN(p2Score) || p1Score < 0 || p2Score < 0 || p1Score > 30 || p2Score > 30) {
+    throw new Error("Scores must be valid integers between 0 and 30.");
+  }
+
+  const isKnockout =
+    match.bracketSide === "WINNERS" ||
+    match.bracketSide === "LOSERS" ||
+    match.bracketSide === "GRAND_FINAL";
+  if (!match.isFriendly && isKnockout && p1Score === p2Score) {
+    throw new Error(
+      "Knockout matches cannot end in a draw. Please input the final score including Extra Time / Penalties."
+    );
+  }
+
+  const now = new Date().toISOString();
+
+  db.exec("BEGIN");
+  try {
+    // 1. Record screenshot into match_evidence
+    db.prepare(`
+      INSERT INTO match_evidence (
+        id, match_id, uploaded_by_id, file_type, mime_type, file_size, storage_path, caption, is_private, uploaded_at
+      ) VALUES (?, ?, ?, 'IMAGE', 'image/png', ?, ?, ?, 0, ?)
+    `).run(
+      createId("evd"),
+      match.id,
+      params.user.id,
+      params.screenshotUrl.length,
+      params.screenshotUrl,
+      params.notes || "AI-Translated Full-Time Scoreboard Screenshot",
+      now
+    );
+
+    // 2. Record confirmed result
+    const existingSub = db
+      .prepare(`SELECT id FROM match_results WHERE match_id = ? AND submitted_by_id = ?`)
+      .get(match.id, params.user.id) as { id: string } | undefined;
+
+    if (existingSub) {
+      db.prepare(`
+        UPDATE match_results
+        SET player_one_score = ?, player_two_score = ?, notes = ?, status = 'CONFIRMED', submitted_at = ?
+        WHERE id = ?
+      `).run(p1Score, p2Score, params.notes || "Screenshot AI Verified", now, existingSub.id);
+    } else {
+      db.prepare(`
+        INSERT INTO match_results (
+          id, match_id, submitted_by_id, player_one_score, player_two_score, notes, status, submitted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?)
+      `).run(
+        createId("mres"),
+        match.id,
+        params.user.id,
+        p1Score,
+        p2Score,
+        params.notes || "Screenshot AI Verified",
+        now
+      );
+    }
+
+    // 3. Finalize verified match (bracket advance, standings recalculation, Elo rating updates)
+    finalizeVerifiedMatchInternal(db, match.id, p1Score, p2Score, "COMPLETED", params.user.id);
+
+    // 4. Create public community highlight post with screenshot!
+    const winnerUsername =
+      p1Score > p2Score ? match.playerOne.username : p2Score > p1Score ? match.playerTwo.username : null;
+    const postTitle = winnerUsername
+      ? `Full-Time Result: ${match.playerOne.username} ${p1Score} - ${p2Score} ${match.playerTwo.username}`
+      : `Full-Time Draw: ${match.playerOne.username} ${p1Score} - ${p2Score} ${match.playerTwo.username}`;
+
+    const postBody = `Verified match result in ${match.tournamentTitle || "Competition"} (${match.roundLabel}). Screenshot translation confirmed.\nWinner: ${winnerUsername ? "@" + winnerUsername : "Draw"}`;
+
+    db.prepare(`
+      INSERT INTO activity_events (id, actor_id, event_type, title, body, media_url, media_type, link_url, created_at)
+      VALUES (?, ?, 'HIGHLIGHT', ?, ?, ?, 'IMAGE', ?, ?)
+    `).run(
+      createId("act"),
+      params.user.id,
+      postTitle,
+      postBody,
+      params.screenshotUrl.startsWith("data:") ? params.screenshotUrl : null,
+      `/matches/${match.id}`,
+      now
+    );
+
+    db.exec("COMMIT");
+    return getMatchDetail(match.id, params.user)!;
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
   }
 }
 

@@ -32,6 +32,7 @@ export default function CreateTournamentPage() {
   );
   const [sponsorName, setSponsorName] = useState("");
   const [livestreamUrl, setLivestreamUrl] = useState("");
+  const [competingTeamsText, setCompetingTeamsText] = useState("");
   const [status, setStatus] = useState("REGISTRATION_OPEN");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,7 @@ export default function CreateTournamentPage() {
           prizeDetails,
           sponsorName: sponsorName || undefined,
           livestreamUrl: livestreamUrl || undefined,
+          competingTeams: competingTeamsText.trim() ? competingTeamsText : undefined,
           status,
         }),
       });
@@ -293,9 +295,29 @@ export default function CreateTournamentPage() {
           </div>
         </div>
 
+        {/* Competing Teams Bulk Upload / Auto-Fixtures */}
+        <div className="p-4 sm:p-5 rounded-xl bg-brand-navy border border-brand-royal/60 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold uppercase text-brand-yellow">
+              Upload Competing Teams & Auto-Generate Fixtures (Optional)
+            </label>
+            <span className="text-[11px] text-brand-grey font-mono">1 Team Per Line or Comma-Separated</span>
+          </div>
+          <p className="text-xs text-brand-grey">
+            Enter or paste competing team names (e.g. <em>AFC Leopards, Gor Mahia, Tusker FC, Bandari</em>). If entered, all fixtures, match schedule, and brackets will be generated automatically upon creation! If left blank, players can register their teams individually online.
+          </p>
+          <textarea
+            rows={4}
+            value={competingTeamsText}
+            onChange={(e) => setCompetingTeamsText(e.target.value)}
+            placeholder="e.g.&#10;Arsenal eFC Nairobi&#10;Chelsea Kenya Warriors&#10;Real Madrid Eldoret&#10;Barcelona Mombasa FC"
+            className="esports-input font-mono text-xs"
+          />
+        </div>
+
         <button type="submit" disabled={loading} className="btn-yellow w-full py-3.5 text-base">
           <Trophy className="w-5 h-5" />
-          {loading ? "Creating Tournament..." : "Launch Official Tournament"}
+          {loading ? "Creating Competition..." : competingTeamsText.trim() ? "Create & Auto-Generate Fixtures" : "Launch Official Competition"}
         </button>
       </form>
     </div>

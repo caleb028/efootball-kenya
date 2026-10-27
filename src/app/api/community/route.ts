@@ -7,6 +7,11 @@ import {
   toggleCommunityReaction,
   submitModerationReport,
   listArticles,
+  listChatGroups,
+  createChatGroup,
+  joinChatGroup,
+  getChatGroupMessages,
+  sendChatMessage,
 } from "@/lib/services/clans-community";
 import {
   createFriendlyChallenge,
@@ -24,6 +29,17 @@ export async function GET(req: NextRequest) {
       highlightsOnly: searchParams.get("highlights") === "1",
     });
     return NextResponse.json({ articles });
+  }
+
+  if (type === "groups") {
+    const groups = listChatGroups(viewer?.id);
+    return NextResponse.json({ groups });
+  }
+
+  if (type === "messages") {
+    const groupId = searchParams.get("groupId") || "";
+    const messages = getChatGroupMessages(groupId);
+    return NextResponse.json({ messages });
   }
 
   const events = listCommunityEvents(30, viewer?.id);
@@ -46,6 +62,7 @@ export async function POST(req: NextRequest) {
         eventType: String(body.eventType || "HIGHLIGHT"),
         title: String(body.title || ""),
         body: String(body.body || ""),
+        mediaUrl: body.mediaUrl ? String(body.mediaUrl) : undefined,
         linkUrl: body.linkUrl ? String(body.linkUrl) : undefined,
       });
       return NextResponse.json({ id, message: "Community highlight published!" });
@@ -61,8 +78,37 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "REACT") {
-      const res = toggleCommunityReaction(String(body.eventId || ""), user.id);
+      const res = toggleCommunityReaction(
+        String(body.eventId || ""),
+        user.id,
+        String(body.emoji || "LIKE")
+      );
       return NextResponse.json(res);
+    }
+
+    if (action === "CREATE_GROUP") {
+      const id = createChatGroup({
+        name: String(body.name || ""),
+        description: body.description ? String(body.description) : undefined,
+        category: body.category ? String(body.category) : "GENERAL",
+        author: user,
+      });
+      return NextResponse.json({ id, message: "Chat group created!" });
+    }
+
+    if (action === "JOIN_GROUP") {
+      joinChatGroup(String(body.groupId || ""), user.id);
+      return NextResponse.json({ ok: true, message: "Joined chat group." });
+    }
+
+    if (action === "SEND_MESSAGE") {
+      const msg = sendChatMessage({
+        groupId: String(body.groupId || ""),
+        sender: user,
+        message: String(body.message || ""),
+        mediaUrl: body.mediaUrl ? String(body.mediaUrl) : undefined,
+      });
+      return NextResponse.json({ ...msg, message: "Message sent." });
     }
 
     if (action === "REPORT") {

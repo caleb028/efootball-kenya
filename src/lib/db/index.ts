@@ -260,6 +260,7 @@ function initializeSchema(db: DatabaseSync) {
       id TEXT PRIMARY KEY,
       tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      team_name TEXT,
       status TEXT NOT NULL DEFAULT 'CONFIRMED',
       registered_at TEXT NOT NULL,
       withdrawn_at TEXT,
@@ -277,6 +278,7 @@ function initializeSchema(db: DatabaseSync) {
       id TEXT PRIMARY KEY,
       tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      team_name TEXT,
       seed INTEGER NOT NULL,
       group_id TEXT REFERENCES tournament_groups(id) ON DELETE SET NULL,
       points INTEGER NOT NULL DEFAULT 0,
@@ -601,6 +603,8 @@ function initializeSchema(db: DatabaseSync) {
       event_type TEXT NOT NULL,
       title TEXT NOT NULL,
       body TEXT NOT NULL,
+      media_url TEXT,
+      media_type TEXT,
       link_url TEXT,
       created_at TEXT NOT NULL
     );
@@ -620,6 +624,35 @@ function initializeSchema(db: DatabaseSync) {
       emoji TEXT NOT NULL DEFAULT 'FIRE',
       created_at TEXT NOT NULL,
       UNIQUE(event_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT NOT NULL DEFAULT 'GENERAL',
+      avatar_url TEXT,
+      created_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      is_private INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_group_members (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT 'MEMBER',
+      joined_at TEXT NOT NULL,
+      UNIQUE(group_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL REFERENCES chat_groups(id) ON DELETE CASCADE,
+      sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      media_url TEXT,
+      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS reports (
@@ -910,6 +943,19 @@ function initializeSchema(db: DatabaseSync) {
       updated_at TEXT NOT NULL
     );
   `);
+
+  try {
+    db.exec("ALTER TABLE tournament_registrations ADD COLUMN team_name TEXT;");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE tournament_participants ADD COLUMN team_name TEXT;");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE activity_events ADD COLUMN media_url TEXT;");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE activity_events ADD COLUMN media_type TEXT;");
+  } catch {}
 }
 
 function seedSystemDefaults(db: DatabaseSync) {
@@ -1017,5 +1063,35 @@ function seedSystemDefaults(db: DatabaseSync) {
   `);
   for (const s of settings) {
     insertSetting.run(`sys_${s.key.toLowerCase()}`, s.key, s.value, s.description, now);
+  }
+
+  // 7. Community Default Chat Groups
+  const defaultGroups = [
+    {
+      id: "group_nairobi_arena",
+      name: "Nairobi eFootball Arena",
+      description: "Official community chat for national tournaments, weekend cups, and match banter.",
+      category: "GENERAL",
+    },
+    {
+      id: "group_tactics_lab",
+      name: "Tactics & Squad Building Lab",
+      description: "Discussion on optimal manager tactics, 4-3-3 counter-pressing, individual instructions, and squad meta.",
+      category: "TACTICS",
+    },
+    {
+      id: "group_sparring_matchmaking",
+      name: "Sparring & Friendly Matchmaking",
+      description: "Find instant sparring partners, scrim against top county clans, and warm up before tournament fixtures.",
+      category: "MATCHMAKING",
+    },
+  ];
+
+  const insertGroup = db.prepare(`
+    INSERT OR IGNORE INTO chat_groups (id, name, description, category, is_private, created_at)
+    VALUES (?, ?, ?, ?, 0, ?)
+  `);
+  for (const g of defaultGroups) {
+    insertGroup.run(g.id, g.name, g.description, g.category, now);
   }
 }

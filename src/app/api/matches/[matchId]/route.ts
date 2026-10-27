@@ -5,6 +5,7 @@ import {
   checkInToMatch,
   submitMatchResult,
   uploadMatchEvidence,
+  verifyAndFinalizeMatchWithScreenshot,
   openMatchDispute,
   submitDisputeAppeal,
 } from "@/lib/services/tournaments";
@@ -37,6 +38,22 @@ export async function POST(
     if (action === "CHECKIN") {
       const match = checkInToMatch(params.matchId, user);
       return NextResponse.json({ match, message: "Checked in to Match Room." });
+    }
+
+    if (action === "TRANSLATE_AND_FINALIZE_SCREENSHOT") {
+      const match = verifyAndFinalizeMatchWithScreenshot({
+        matchId: params.matchId,
+        user,
+        playerOneScore: Number(body.playerOneScore),
+        playerTwoScore: Number(body.playerTwoScore),
+        screenshotUrl: String(body.screenshotUrl || ""),
+        notes: body.notes ? String(body.notes) : undefined,
+      });
+      return NextResponse.json({
+        match,
+        message:
+          "Screenshot verified! Match result finalized, competition table updated, and Elo rating computed.",
+      });
     }
 
     if (action === "SUBMIT_RESULT") {

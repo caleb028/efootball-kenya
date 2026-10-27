@@ -59,12 +59,15 @@ export default function TournamentsPage({
             Clan Tournaments.
           </p>
         </div>
-        {canCreate && (
-          <Link href="/organiser/tournaments/new" className="btn-yellow shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href={user ? "/organiser/tournaments/new" : "/login?redirect=/organiser/tournaments/new"}
+            className="btn-yellow shrink-0 flex items-center gap-2"
+          >
             <Plus className="w-4 h-4" />
-            Create Tournament
+            Create League or Tournament
           </Link>
-        )}
+        </div>
       </div>
 
       {/* Filter Bar */}

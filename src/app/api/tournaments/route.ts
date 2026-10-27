@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, hasAnyRole } from "@/lib/services/auth";
-import { createTournament, listTournaments } from "@/lib/services/tournaments";
+import { getCurrentUser } from "@/lib/services/auth";
+import {
+  createTournament,
+  listTournaments,
+  importCompetingTeamsAndGenerateFixtures,
+} from "@/lib/services/tournaments";
 import { TournamentFormatId } from "@/lib/constants/kenya";
 
 export async function GET(req: NextRequest) {
@@ -19,13 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-    }
-    if (!hasAnyRole(user, ["ORGANISER", "TOURNAMENT_ADMIN", "SUPER_ADMIN"])) {
-      return NextResponse.json(
-        { error: "Only approved Organisers or Tournament Admins can create tournaments." },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Authentication required to create a competition." }, { status: 401 });
     }
 
     const body = await req.json();
@@ -56,6 +54,23 @@ export async function POST(req: NextRequest) {
       organiserId: user.id,
       status: String(body.status || "REGISTRATION_OPEN"),
     });
+
+    // If competing teams were uploaded directly upon creation, auto-generate fixtures immediately!
+    if (body.competingTeams) {
+      let teams: string[] = [];
+      if (Array.isArray(body.competingTeams)) {
+        teams = body.competingTeams.map(String).map((s: string) => s.trim()).filter(Boolean);
+      } else if (typeof body.competingTeams === "string") {
+        teams = body.competingTeams.split(/[\n,;]+/).map((s: string) => s.trim()).filter(Boolean);
+      }
+      if (teams.length >= 2) {
+        const liveTournament = importCompetingTeamsAndGenerateFixtures(tournament.id, teams, user);
+        return NextResponse.json({
+          tournament: liveTournament,
+          message: `Competition created with ${teams.length} teams! Fixtures generated automatically.`,
+        });
+      }
+    }
 
     return NextResponse.json({ tournament, message: "Tournament created successfully." });
   } catch (err: any) {

@@ -383,7 +383,8 @@ export function listCommunityEvents(limit = 25, viewerId?: string | null) {
       SELECT
         ae.*,
         u.username as actor_username,
-        p.county as actor_county
+        p.county as actor_county,
+        p.avatar_url as actor_avatar
       FROM activity_events ae
       LEFT JOIN users u ON u.id = ae.actor_id
       LEFT JOIN profiles p ON p.user_id = ae.actor_id
@@ -395,44 +396,55 @@ export function listCommunityEvents(limit = 25, viewerId?: string | null) {
   return events.map((ev) => {
     const comments = db
       .prepare(`
-        SELECT c.*, u.username as author_username
+        SELECT c.*, u.username as author_username, p.avatar_url as author_avatar
         FROM comments c
         JOIN users u ON u.id = c.author_id
+        LEFT JOIN profiles p ON p.user_id = c.author_id
         WHERE c.event_id = ?
         ORDER BY c.created_at ASC
       `)
       .all(ev.id) as any[];
 
-    const reactionCount = (
-      db.prepare(`SELECT COUNT(*) as cnt FROM reactions WHERE event_id = ?`).get(ev.id) as {
-        cnt: number;
-      }
-    ).cnt;
+    const reactions = db
+      .prepare(`SELECT emoji, user_id FROM reactions WHERE event_id = ?`)
+      .all(ev.id) as { emoji: string; user_id: string }[];
 
-    const viewerReacted = viewerId
-      ? Boolean(
-          db
-            .prepare(`SELECT id FROM reactions WHERE event_id = ? AND user_id = ?`)
-            .get(ev.id, viewerId)
-        )
-      : false;
+    const reactionCounts: Record<string, number> = {
+      LIKE: 0,
+      LOVE: 0,
+      FIRE: 0,
+      TROPHY: 0,
+    };
+    let userReaction: string | null = null;
+    for (const r of reactions) {
+      reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
+      if (viewerId && r.user_id === viewerId) {
+        userReaction = r.emoji;
+      }
+    }
 
     return {
       id: ev.id,
       actorId: ev.actor_id,
       actorUsername: ev.actor_username || "eFootball Kenya",
       actorCounty: ev.actor_county || "Kenya",
+      actorAvatar: ev.actor_avatar || null,
       eventType: ev.event_type,
       title: ev.title,
       body: ev.body,
+      mediaUrl: ev.media_url || null,
+      mediaType: ev.media_type || (ev.media_url ? "IMAGE" : null),
       linkUrl: ev.link_url,
       createdAt: ev.created_at,
-      reactionCount: Number(reactionCount),
-      viewerReacted,
+      reactionCount: reactions.length,
+      reactionCounts,
+      viewerReacted: Boolean(userReaction),
+      userReaction,
       comments: comments.map((c) => ({
         id: c.id,
         authorId: c.author_id,
         authorUsername: c.author_username,
+        authorAvatar: c.author_avatar || null,
         content: c.content,
         createdAt: c.created_at,
       })),
@@ -445,6 +457,7 @@ export function createCommunityPost(params: {
   eventType?: string;
   title: string;
   body: string;
+  mediaUrl?: string;
   linkUrl?: string;
 }) {
   if (!params.title.trim() || !params.body.trim()) {
@@ -453,14 +466,16 @@ export function createCommunityPost(params: {
   const db = getDb();
   const id = createId("act");
   db.prepare(`
-    INSERT INTO activity_events (id, actor_id, event_type, title, body, link_url, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO activity_events (id, actor_id, event_type, title, body, media_url, media_type, link_url, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     params.author.id,
     params.eventType || "HIGHLIGHT",
     params.title.trim(),
     params.body.trim(),
+    params.mediaUrl?.trim() || null,
+    params.mediaUrl ? "IMAGE" : null,
     params.linkUrl?.trim() || null,
     new Date().toISOString()
   );
@@ -482,22 +497,207 @@ export function addCommunityComment(params: {
   return id;
 }
 
-export function toggleCommunityReaction(eventId: string, userId: string, emoji = "FIRE") {
+export function toggleCommunityReaction(eventId: string, userId: string, emoji = "LIKE") {
   const db = getDb();
+  const validEmoji = ["LIKE", "LOVE", "FIRE", "TROPHY"].includes(emoji) ? emoji : "LIKE";
   const existing = db
-    .prepare(`SELECT id FROM reactions WHERE event_id = ? AND user_id = ?`)
-    .get(eventId, userId) as { id: string } | undefined;
+    .prepare(`SELECT id, emoji FROM reactions WHERE event_id = ? AND user_id = ?`)
+    .get(eventId, userId) as { id: string; emoji: string } | undefined;
 
   if (existing) {
-    db.prepare(`DELETE FROM reactions WHERE id = ?`).run(existing.id);
-    return { reacted: false };
+    if (existing.emoji === validEmoji) {
+      db.prepare(`DELETE FROM reactions WHERE id = ?`).run(existing.id);
+      return { reacted: false, emoji: null };
+    } else {
+      db.prepare(`UPDATE reactions SET emoji = ? WHERE id = ?`).run(validEmoji, existing.id);
+      return { reacted: true, emoji: validEmoji };
+    }
   } else {
     db.prepare(`
       INSERT INTO reactions (id, event_id, user_id, emoji, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(createId("rxn"), eventId, userId, emoji, new Date().toISOString());
-    return { reacted: true };
+    `).run(createId("rxn"), eventId, userId, validEmoji, new Date().toISOString());
+    return { reacted: true, emoji: validEmoji };
   }
+}
+
+// ----------------------------------------------------------------------------
+// CHAT GROUPS & REAL-TIME COMMUNITY MESSAGING
+// ----------------------------------------------------------------------------
+
+export function listChatGroups(userId?: string) {
+  const db = getDb();
+  const groups = db
+    .prepare(`
+      SELECT
+        cg.*,
+        u.username as creator_username,
+        (SELECT COUNT(*) FROM chat_group_members WHERE group_id = cg.id) as member_count,
+        (SELECT COUNT(*) FROM chat_messages WHERE group_id = cg.id) as message_count,
+        (
+          SELECT cm.message FROM chat_messages cm WHERE cm.group_id = cg.id ORDER BY cm.created_at DESC LIMIT 1
+        ) as last_message,
+        (
+          SELECT cm.created_at FROM chat_messages cm WHERE cm.group_id = cg.id ORDER BY cm.created_at DESC LIMIT 1
+        ) as last_message_at
+      FROM chat_groups cg
+      LEFT JOIN users u ON u.id = cg.created_by_id
+      ORDER BY last_message_at DESC NULLS LAST, cg.created_at ASC
+    `)
+    .all() as any[];
+
+  return groups.map((g) => {
+    const isMember = userId
+      ? Boolean(
+          db
+            .prepare(`SELECT id FROM chat_group_members WHERE group_id = ? AND user_id = ?`)
+            .get(g.id, userId)
+        )
+      : false;
+
+    return {
+      id: g.id,
+      name: g.name,
+      description: g.description || "",
+      category: g.category || "GENERAL",
+      avatarUrl: g.avatar_url || null,
+      creatorUsername: g.creator_username || "Admin",
+      memberCount: Number(g.member_count || 1),
+      messageCount: Number(g.message_count || 0),
+      lastMessage: g.last_message || null,
+      lastMessageAt: g.last_message_at || g.created_at,
+      isMember,
+    };
+  });
+}
+
+export function createChatGroup(params: {
+  name: string;
+  description?: string;
+  category?: string;
+  author: AuthenticatedUser;
+}) {
+  if (!params.name.trim()) throw new Error("Group name is required.");
+  const db = getDb();
+  const id = createId("grp");
+  const now = new Date().toISOString();
+
+  db.exec("BEGIN");
+  try {
+    db.prepare(`
+      INSERT INTO chat_groups (id, name, description, category, created_by_id, is_private, created_at)
+      VALUES (?, ?, ?, ?, ?, 0, ?)
+    `).run(
+      id,
+      params.name.trim(),
+      params.description?.trim() || "eFootball Kenya competitive chat lounge.",
+      params.category || "GENERAL",
+      params.author.id,
+      now
+    );
+
+    db.prepare(`
+      INSERT INTO chat_group_members (id, group_id, user_id, role, joined_at)
+      VALUES (?, ?, ?, 'OWNER', ?)
+    `).run(createId("gm"), id, params.author.id, now);
+
+    db.prepare(`
+      INSERT INTO chat_messages (id, group_id, sender_id, message, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      createId("msg"),
+      id,
+      params.author.id,
+      `Welcome to ${params.name.trim()}! Introduce yourself and share your eFootball ID.`,
+      now
+    );
+
+    db.exec("COMMIT");
+    return id;
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
+export function joinChatGroup(groupId: string, userId: string) {
+  const db = getDb();
+  const group = db.prepare(`SELECT id FROM chat_groups WHERE id = ?`).get(groupId);
+  if (!group) throw new Error("Chat group not found.");
+
+  const existing = db
+    .prepare(`SELECT id FROM chat_group_members WHERE group_id = ? AND user_id = ?`)
+    .get(groupId, userId);
+
+  if (!existing) {
+    db.prepare(`
+      INSERT INTO chat_group_members (id, group_id, user_id, role, joined_at)
+      VALUES (?, ?, ?, 'MEMBER', ?)
+    `).run(createId("gm"), groupId, userId, new Date().toISOString());
+  }
+  return true;
+}
+
+export function getChatGroupMessages(groupId: string, limit = 50) {
+  const db = getDb();
+  const rows = db
+    .prepare(`
+      SELECT
+        cm.*,
+        u.username as sender_username,
+        p.display_name,
+        p.avatar_url,
+        p.county
+      FROM chat_messages cm
+      JOIN users u ON u.id = cm.sender_id
+      LEFT JOIN profiles p ON p.user_id = cm.sender_id
+      WHERE cm.group_id = ?
+      ORDER BY cm.created_at ASC
+      LIMIT ?
+    `)
+    .all(groupId, limit) as any[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    groupId: r.group_id,
+    senderId: r.sender_id,
+    senderUsername: r.sender_username,
+    displayName: r.display_name || r.sender_username,
+    avatarUrl: r.avatar_url || null,
+    county: r.county || "Kenya",
+    message: r.message,
+    mediaUrl: r.media_url || null,
+    createdAt: r.created_at,
+  }));
+}
+
+export function sendChatMessage(params: {
+  groupId: string;
+  sender: AuthenticatedUser;
+  message: string;
+  mediaUrl?: string;
+}) {
+  if (!params.message.trim() && !params.mediaUrl) {
+    throw new Error("Message cannot be empty.");
+  }
+  const db = getDb();
+  joinChatGroup(params.groupId, params.sender.id);
+
+  const id = createId("msg");
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO chat_messages (id, group_id, sender_id, message, media_url, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    params.groupId,
+    params.sender.id,
+    params.message.trim(),
+    params.mediaUrl?.trim() || null,
+    now
+  );
+
+  return { id, createdAt: now };
 }
 
 export function submitModerationReport(params: {

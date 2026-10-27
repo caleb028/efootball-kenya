@@ -18,6 +18,7 @@ import {
   Play,
   ExternalLink,
   RefreshCw,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface TournamentDetailClientProps {
@@ -39,6 +40,9 @@ export function TournamentDetailClient({
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
+  const [teamNameInput, setTeamNameInput] = useState("");
+  const [uploadTeamsInput, setUploadTeamsInput] = useState("");
+  const [showUploadRoster, setShowUploadRoster] = useState(false);
 
   const t = tournament || {};
   const participants = Array.isArray(t.participants) ? t.participants : [];
@@ -84,6 +88,63 @@ export function TournamentDetailClient({
         setFeedback({ type: "err", text: data.error || "Action failed." });
       } else {
         setFeedback({ type: "ok", text: data.message || "Success!" });
+        await refreshTournament();
+        router.refresh();
+      }
+    } catch {
+      setFeedback({ type: "err", text: "Network error." });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRegisterTeam(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setFeedback(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/tournaments/${t.slug}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "REGISTER", teamName: teamNameInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback({ type: "err", text: data.error || "Registration failed." });
+      } else {
+        setFeedback({ type: "ok", text: data.message || "Registration confirmed!" });
+        setTeamNameInput("");
+        await refreshTournament();
+        router.refresh();
+      }
+    } catch {
+      setFeedback({ type: "err", text: "Network error." });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleUploadTeamsAndGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!uploadTeamsInput.trim()) return;
+    setFeedback(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/tournaments/${t.slug}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "IMPORT_TEAMS_AND_GENERATE_FIXTURES",
+          teams: uploadTeamsInput,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback({ type: "err", text: data.error || "Failed to generate fixtures." });
+      } else {
+        setFeedback({ type: "ok", text: data.message || "Fixtures generated successfully!" });
+        setShowUploadRoster(false);
+        setUploadTeamsInput("");
         await refreshTournament();
         router.refresh();
       }
@@ -213,32 +274,84 @@ export function TournamentDetailClient({
               </div>
             ) : (
               isOpen && (
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleAction("REGISTER")}
-                  className="btn-yellow w-full py-3"
-                >
-                  <Trophy className="w-4 h-4" />
-                  {tournament.registeredCount >= tournament.maxParticipants
-                    ? "Join Official Waitlist"
-                    : "Register for Tournament"}
-                </button>
+                <div className="space-y-2 bg-brand-navy p-3 rounded-xl border border-brand-yellow/50 shadow-md">
+                  <label className="block text-[11px] font-bold uppercase text-brand-yellow">
+                    Join Competition With Your Team
+                  </label>
+                  <input
+                    type="text"
+                    value={teamNameInput}
+                    onChange={(e) => setTeamNameInput(e.target.value)}
+                    placeholder="Your competing team name..."
+                    className="esports-input text-xs py-1.5"
+                  />
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleRegisterTeam()}
+                    className="btn-yellow w-full py-2.5 text-xs"
+                  >
+                    <Trophy className="w-4 h-4" />
+                    {tournament.registeredCount >= tournament.maxParticipants
+                      ? "Join Waitlist With Team"
+                      : "Register Team for Competition"}
+                  </button>
+                </div>
               )
             )}
 
-            {canManage && tournament.participants.length >= 2 && (
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleAction("GENERATE_BRACKET")}
-                className="btn-royal w-full text-xs py-2.5"
-              >
-                <Play className="w-4 h-4 text-brand-yellow" />
-                {tournament.matches.length > 0
-                  ? "Regenerate Bracket & Fixtures"
-                  : "Generate Bracket & Start"}
-              </button>
+            {canManage && (
+              <div className="space-y-2 pt-1 border-t border-brand-royal/40">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadRoster((v) => !v)}
+                  className="btn-outline w-full text-xs py-2 text-brand-yellow border-brand-yellow/60"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  {showUploadRoster ? "Hide Teams Uploader" : "Upload Competing Teams"}
+                </button>
+
+                {showUploadRoster && (
+                  <form
+                    onSubmit={handleUploadTeamsAndGenerate}
+                    className="p-3 bg-brand-navy rounded-xl border border-brand-yellow/60 space-y-2 text-left"
+                  >
+                    <div className="text-[11px] font-bold text-brand-yellow uppercase">
+                      Paste Competing Teams (1 per line)
+                    </div>
+                    <textarea
+                      rows={3}
+                      required
+                      value={uploadTeamsInput}
+                      onChange={(e) => setUploadTeamsInput(e.target.value)}
+                      placeholder="e.g.&#10;AFC Leopards Esports&#10;Gor Mahia eFC&#10;Tusker FC Gaming&#10;Bandari Esports"
+                      className="esports-input font-mono text-[11px]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="btn-yellow w-full py-2 text-xs"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      Generate Fixtures Now
+                    </button>
+                  </form>
+                )}
+
+                {tournament.participants.length >= 2 && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleAction("GENERATE_BRACKET")}
+                    className="btn-royal w-full text-xs py-2.5"
+                  >
+                    <Play className="w-4 h-4 text-brand-yellow" />
+                    {tournament.matches.length > 0
+                      ? "Regenerate Bracket & Fixtures"
+                      : "Generate Bracket & Start"}
+                  </button>
+                )}
+              </div>
             )}
 
             <button
@@ -416,11 +529,12 @@ export function TournamentDetailClient({
                           #{p.seed ?? idx + 1}
                         </td>
                         <td className="py-3 px-4 font-semibold text-white">
+                          <div className="font-bold text-white text-sm">{p.teamName || p.displayName || p.username}</div>
                           <Link
                             href={`/players/${p.username}`}
-                            className="hover:text-brand-yellow"
+                            className="hover:text-brand-yellow text-xs text-brand-grey font-normal"
                           >
-                            {p.username}
+                            @{p.username}
                           </Link>
                         </td>
                         <td className="py-3 px-4 text-brand-grey">{p.county}</td>
