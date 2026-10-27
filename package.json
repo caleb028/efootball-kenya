@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "eFootball Kenya — Competitive Gaming & Tournament Ecosystem",
   "private": true,
+  "engines": {
+    "node": ">=22.x"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

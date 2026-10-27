@@ -7,6 +7,7 @@
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import crypto from "node:crypto";
 import { MARKETPLACE_PERMITTED_CATEGORIES } from "@/lib/constants/kenya";
 
@@ -29,11 +30,50 @@ export function setDatabasePathForTests(customPath: string) {
   currentDbPath = customPath;
 }
 
+function resolveDatabasePath(): string {
+  if (currentDbPath) {
+    return currentDbPath;
+  }
+  if (process.env.SQLITE_DB_PATH) {
+    return process.env.SQLITE_DB_PATH;
+  }
+
+  // Detect serverless execution environments (Vercel, AWS Lambda, Netlify Functions, etc.)
+  const isServerless =
+    Boolean(process.env.VERCEL) ||
+    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+    Boolean(process.env.LAMBDA_TASK_ROOT) ||
+    process.cwd().startsWith("/var/task");
+
+  if (isServerless) {
+    const tmpDbPath = path.join(os.tmpdir(), "efootball_kenya.db");
+    // If a bundled database exists in the deployment package, copy it to /tmp if not already there
+    const bundledDbPath = path.join(process.cwd(), "data", "efootball_kenya.db");
+    try {
+      if (!fs.existsSync(tmpDbPath) && fs.existsSync(bundledDbPath)) {
+        fs.copyFileSync(bundledDbPath, tmpDbPath);
+      }
+    } catch {
+      // ignore copy errors
+    }
+    return tmpDbPath;
+  }
+
+  // Standard environment: Local development, VPS, Docker container
+  const localDataDir = path.join(process.cwd(), "data");
+  try {
+    if (!fs.existsSync(localDataDir)) {
+      fs.mkdirSync(localDataDir, { recursive: true });
+    }
+    return path.join(localDataDir, "efootball_kenya.db");
+  } catch {
+    // If local directory creation fails due to read-only filesystem, fallback to tmpdir
+    return path.join(os.tmpdir(), "efootball_kenya.db");
+  }
+}
+
 export function getDb(): DatabaseSync {
-  const resolvedPath =
-    currentDbPath ??
-    process.env.SQLITE_DB_PATH ??
-    path.join(process.cwd(), "data", "efootball_kenya.db");
+  const resolvedPath = resolveDatabasePath();
 
   if (dbInstance && currentDbPath === resolvedPath) {
     return dbInstance;
@@ -41,15 +81,27 @@ export function getDb(): DatabaseSync {
 
   if (resolvedPath !== ":memory:") {
     const dir = path.dirname(resolvedPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch {
+      // directory creation ignored if read-only or already exists
     }
   }
 
   const db = new DatabaseSync(resolvedPath);
   db.exec("PRAGMA foreign_keys = ON;");
   if (resolvedPath !== ":memory:") {
-    db.exec("PRAGMA journal_mode = WAL;");
+    try {
+      db.exec("PRAGMA journal_mode = WAL;");
+    } catch {
+      try {
+        db.exec("PRAGMA journal_mode = DELETE;");
+      } catch {
+        // journal mode fallback
+      }
+    }
   }
 
   initializeSchema(db);
