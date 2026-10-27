@@ -29,14 +29,21 @@ export function PlayerDashboardClient({
 }) {
   const router = useRouter();
   const [section, setSection] = useState(initialSection);
-  const { profile, notifications, challenges } = dashboardData;
 
-  const [displayName, setDisplayName] = useState(profile.displayName || "");
-  const [county, setCounty] = useState(profile.county || "Nairobi");
-  const [platform, setPlatform] = useState(profile.platform || "MOBILE");
-  const [efootballId, setEfootballId] = useState(profile.efootballId || "");
-  const [university, setUniversity] = useState(profile.university || "");
-  const [bio, setBio] = useState(profile.bio || "");
+  const safeData = dashboardData || {};
+  const profile = safeData.profile || {};
+  const notifications = Array.isArray(safeData.notifications) ? safeData.notifications : [];
+  const challenges = Array.isArray(safeData.challenges) ? safeData.challenges : [];
+  const matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
+  const tournaments = Array.isArray(profile.tournaments) ? profile.tournaments : [];
+  const achievements = Array.isArray(profile.achievements) ? profile.achievements : [];
+
+  const [displayName, setDisplayName] = useState(profile.displayName || user?.displayName || user?.username || "");
+  const [county, setCounty] = useState(profile.county || user?.county || "Nairobi");
+  const [platform, setPlatform] = useState(profile.platform || user?.platform || "MOBILE");
+  const [efootballId, setEfootballId] = useState(profile.efootballId || user?.efootballId || "");
+  const [university, setUniversity] = useState(profile.university || user?.university || "");
+  const [bio, setBio] = useState(profile.bio || user?.bio || "");
 
   const [opponentUsername, setOpponentUsername] = useState("");
   const [challengeMessage, setChallengeMessage] = useState("");
@@ -296,13 +303,13 @@ export function PlayerDashboardClient({
                   <h2 className="font-display font-bold text-xl uppercase text-brand-yellow">
                     My Active & Upcoming Matches
                   </h2>
-                  {profile.matchHistory.length === 0 ? (
+                  {matchHistory.length === 0 ? (
                     <p className="text-xs text-brand-grey">
                       No matches scheduled yet. Join a tournament to receive your first fixture!
                     </p>
                   ) : (
                     <div className="space-y-2.5">
-                      {profile.matchHistory.slice(0, 5).map((m: any) => (
+                      {matchHistory.slice(0, 5).map((m: any) => (
                         <Link
                           key={m.id}
                           href={`/matches/${m.id}`}
@@ -327,9 +334,9 @@ export function PlayerDashboardClient({
 
                 <div className="esports-card p-6 space-y-4">
                   <h2 className="font-display font-bold text-xl uppercase text-brand-yellow">
-                    My Tournaments ({profile.tournaments.length})
+                    My Tournaments ({tournaments.length})
                   </h2>
-                  {profile.tournaments.length === 0 ? (
+                  {tournaments.length === 0 ? (
                     <div className="space-y-3">
                       <p className="text-xs text-brand-grey">
                         You have not registered for any tournaments yet.
@@ -340,7 +347,7 @@ export function PlayerDashboardClient({
                     </div>
                   ) : (
                     <div className="space-y-2.5">
-                      {profile.tournaments.map((t: any) => (
+                      {tournaments.map((t: any) => (
                         <Link
                           key={t.id}
                           href={`/tournaments/${t.slug}`}
@@ -366,11 +373,11 @@ export function PlayerDashboardClient({
               <h2 className="font-display font-bold text-2xl uppercase text-brand-yellow">
                 My Registered Tournaments
               </h2>
-              {profile.tournaments.length === 0 ? (
+              {tournaments.length === 0 ? (
                 <p className="text-sm text-brand-grey">No tournament registrations yet.</p>
               ) : (
                 <div className="space-y-3">
-                  {profile.tournaments.map((t: any) => (
+                  {tournaments.map((t: any) => (
                     <Link
                       key={t.id}
                       href={`/tournaments/${t.slug}`}
@@ -396,11 +403,11 @@ export function PlayerDashboardClient({
               <h2 className="font-display font-bold text-2xl uppercase text-brand-yellow">
                 My Matches & Verified Results
               </h2>
-              {profile.matchHistory.length === 0 ? (
+              {matchHistory.length === 0 ? (
                 <p className="text-sm text-brand-grey">No matches assigned or completed yet.</p>
               ) : (
                 <div className="space-y-3">
-                  {profile.matchHistory.map((m: any) => (
+                  {matchHistory.map((m: any) => (
                     <Link
                       key={m.id}
                       href={`/matches/${m.id}`}
@@ -430,15 +437,15 @@ export function PlayerDashboardClient({
           {section === "ACHIEVEMENTS" && (
             <div className="esports-card p-6 space-y-4">
               <h2 className="font-display font-bold text-2xl uppercase text-brand-yellow">
-                Earned Competitive Achievements ({profile.achievements.length})
+                Earned Competitive Achievements ({achievements.length})
               </h2>
-              {profile.achievements.length === 0 ? (
+              {achievements.length === 0 ? (
                 <p className="text-sm text-brand-grey">
                   Win verified tournament matches to unlock official badges!
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {profile.achievements.map((a: any) => (
+                  {achievements.map((a: any) => (
                     <div
                       key={a.id}
                       className="p-4 rounded-xl bg-brand-navy border border-brand-yellow/60 space-y-1"

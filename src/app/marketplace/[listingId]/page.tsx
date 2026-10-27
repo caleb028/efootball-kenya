@@ -9,8 +9,16 @@ export default function MarketplaceListingPage({
 }: {
   params: { listingId: string };
 }) {
-  const listing = getMarketplaceListingById(params.listingId);
+  let listing = null;
+  try {
+    listing = getMarketplaceListingById(params.listingId);
+  } catch (err) {
+    console.error("MarketplaceListingPage error:", err);
+  }
   if (!listing) notFound();
-  const user = getCurrentUser();
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
   return <ListingDetailClient listing={listing} currentUser={user} />;
 }

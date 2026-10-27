@@ -257,7 +257,7 @@ export function getPlayerProfileByUsername(username: string, viewerId?: string |
       LEFT JOIN profiles p ON p.user_id = u.id
       LEFT JOIN player_ratings r ON r.user_id = u.id
       LEFT JOIN clans c ON c.id = p.clan_id
-      WHERE u.username = ? AND u.status != 'DELETED'
+      WHERE LOWER(u.username) = LOWER(?) AND u.status != 'DELETED'
     `)
     .get(username) as any;
 
@@ -410,7 +410,49 @@ export function getPlayerProfileByUsername(username: string, viewerId?: string |
 
 export function getPlayerDashboardData(user: AuthenticatedUser) {
   const db = getDb();
-  const profile = getPlayerProfileByUsername(user.username, user.id)!;
+  let profile = getPlayerProfileByUsername(user.username, user.id);
+  if (!profile) {
+    profile = {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      county: user.county,
+      platform: user.platform,
+      efootballId: user.efootballId,
+      bio: user.bio,
+      avatarUrl: user.avatarUrl,
+      isVerified: user.isVerified,
+      university: user.university,
+      clanId: user.clanId,
+      clanName: null,
+      clanTag: null,
+      clanSlug: null,
+      joinedAt: new Date().toISOString(),
+      nationalRank: 1,
+      countyRank: 1,
+      rating: user.rating || 1200,
+      peakRating: user.rating || 1200,
+      lastRatingChange: 0,
+      matchesPlayed: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsScored: 0,
+      goalsConceded: 0,
+      winPercentage: 0,
+      tournamentsEntered: 0,
+      championshipsWon: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+      followersCount: 0,
+      followingCount: 0,
+      isFollowing: false,
+      matchHistory: [],
+      tournaments: [],
+      achievements: [],
+      ratingHistory: [],
+    };
+  }
 
   const notifications = db
     .prepare(`SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 30`)

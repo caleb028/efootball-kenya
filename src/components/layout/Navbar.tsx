@@ -44,17 +44,18 @@ export function Navbar({
     { href: "/community", label: "Community" },
   ];
 
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isOrganiser =
-    user?.roles.includes("ORGANISER") ||
-    user?.roles.includes("TOURNAMENT_ADMIN") ||
-    user?.roles.includes("SUPER_ADMIN");
+    userRoles.includes("ORGANISER") ||
+    userRoles.includes("TOURNAMENT_ADMIN") ||
+    userRoles.includes("SUPER_ADMIN");
 
   const isAdmin =
-    user?.roles.includes("SUPER_ADMIN") ||
-    user?.roles.includes("MODERATOR") ||
-    user?.roles.includes("TOURNAMENT_ADMIN") ||
-    user?.roles.includes("FINANCE_ADMIN") ||
-    user?.roles.includes("CONTENT_EDITOR");
+    userRoles.includes("SUPER_ADMIN") ||
+    userRoles.includes("MODERATOR") ||
+    userRoles.includes("TOURNAMENT_ADMIN") ||
+    userRoles.includes("FINANCE_ADMIN") ||
+    userRoles.includes("CONTENT_EDITOR");
 
   // Close menus on Esc key
   useEffect(() => {

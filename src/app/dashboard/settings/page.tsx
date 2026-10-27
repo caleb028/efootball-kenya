@@ -5,8 +5,17 @@ import { getPlayerDashboardData } from "@/lib/services/rankings-players";
 import { PlayerDashboardClient } from "@/components/dashboard/PlayerDashboardClient";
 
 export default function DashboardSettingsPage() {
-  const user = getCurrentUser();
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
   if (!user) redirect("/login");
-  const data = getPlayerDashboardData(user);
+
+  let data = null;
+  try {
+    data = getPlayerDashboardData(user);
+  } catch (err) {
+    console.error("DashboardSettingsPage error:", err);
+  }
   return <PlayerDashboardClient user={user} dashboardData={data} initialSection="SETTINGS" />;
 }

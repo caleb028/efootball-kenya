@@ -9,8 +9,17 @@ export default function MatchRoomPage({
 }: {
   params: { matchId: string };
 }) {
-  const user = getCurrentUser();
-  const match = getMatchDetail(params.matchId, user);
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
+
+  let match = null;
+  try {
+    match = getMatchDetail(params.matchId, user);
+  } catch (err) {
+    console.error("MatchRoomPage error:", err);
+  }
   if (!match) notFound();
   return <MatchRoomClient match={match} currentUser={user} initialSection="ROOM" />;
 }

@@ -19,8 +19,12 @@ export function ClanDetailClient({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const members = Array.isArray(clan?.members) ? clan.members : [];
+  const pendingRequests = Array.isArray(clan?.pendingRequests) ? clan.pendingRequests : [];
+  const announcements = Array.isArray(clan?.announcements) ? clan.announcements : [];
+
   const myMembership = currentUser
-    ? clan.members.find((m: any) => m.userId === currentUser.id)
+    ? members.find((m: any) => m.userId === currentUser.id)
     : null;
   const isLeader =
     myMembership && (myMembership.role === "OWNER" || myMembership.role === "CAPTAIN");
@@ -155,11 +159,11 @@ export function ClanDetailClient({
           <div className="esports-card overflow-hidden">
             <div className="p-4 bg-brand-navy border-b border-brand-royal/50">
               <h2 className="font-display font-bold text-xl uppercase text-brand-yellow">
-                Official Clan Roster ({clan.members.length})
+                Official Clan Roster ({members.length})
               </h2>
             </div>
             <div className="divide-y divide-brand-royal/25">
-              {clan.members.map((m: any) => (
+              {members.map((m: any) => (
                 <div
                   key={m.id}
                   className="p-4 flex items-center justify-between gap-4 text-sm"
@@ -217,12 +221,12 @@ export function ClanDetailClient({
           </div>
 
           {/* Pending Join Requests (Visible to Owner/Captain) */}
-          {isLeader && clan.pendingRequests.length > 0 && (
+          {isLeader && pendingRequests.length > 0 && (
             <div className="esports-card p-5 space-y-3">
               <h3 className="font-display font-bold text-lg uppercase text-brand-yellow">
-                Pending Join Requests ({clan.pendingRequests.length})
+                Pending Join Requests ({pendingRequests.length})
               </h3>
-              {clan.pendingRequests.map((req: any) => (
+              {pendingRequests.map((req: any) => (
                 <div
                   key={req.id}
                   className="p-3.5 rounded-lg bg-brand-navy border border-brand-royal/40 flex items-center justify-between text-xs"
@@ -284,12 +288,12 @@ export function ClanDetailClient({
 
           <div className="esports-card p-5 space-y-3">
             <h3 className="font-display font-bold text-lg uppercase text-white">
-              Clan Announcements ({clan.announcements.length})
+              Clan Announcements ({announcements.length})
             </h3>
-            {clan.announcements.length === 0 ? (
+            {announcements.length === 0 ? (
               <p className="text-xs text-brand-grey">No clan announcements posted yet.</p>
             ) : (
-              clan.announcements.map((a: any) => (
+              announcements.map((a: any) => (
                 <div
                   key={a.id}
                   className="p-3.5 rounded-lg bg-brand-navy border border-brand-royal/40 space-y-1 text-xs"

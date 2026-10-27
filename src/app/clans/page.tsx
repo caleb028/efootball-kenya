@@ -21,13 +21,17 @@ export default function ClansPage() {
   const [loading, setLoading] = useState(false);
 
   async function fetchClans() {
-    const params = new URLSearchParams();
-    if (countyFilter !== "ALL") params.set("county", countyFilter);
-    if (search.trim()) params.set("q", search.trim());
-    const res = await fetch(`/api/clans?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setClans(data.clans || []);
+    try {
+      const params = new URLSearchParams();
+      if (countyFilter !== "ALL") params.set("county", countyFilter);
+      if (search.trim()) params.set("q", search.trim());
+      const res = await fetch(`/api/clans?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClans(Array.isArray(data.clans) ? data.clans : []);
+      }
+    } catch (err) {
+      console.error("fetchClans error:", err);
     }
   }
 

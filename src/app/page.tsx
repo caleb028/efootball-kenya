@@ -18,12 +18,54 @@ import { listClans } from "@/lib/services/clans-community";
 import { getCurrentUser } from "@/lib/services/auth";
 
 export default function HomePage() {
-  const user = getCurrentUser();
-  const stats = getPlatformStats();
-  const tournaments = listTournaments().slice(0, 6);
-  const liveMatches = getLiveAndRecentMatches(4);
-  const topPlayers = getLeaderboard({ limit: 5 });
-  const clans = listClans({ limit: 3 });
+  let user = null;
+  let stats: ReturnType<typeof getPlatformStats> = {
+    registeredPlayers: 0,
+    tournamentsHosted: 0,
+    completedTournaments: 0,
+    matchesCompleted: 0,
+    activeClans: 0,
+  };
+  let tournaments: ReturnType<typeof listTournaments> = [];
+  let liveMatches: ReturnType<typeof getLiveAndRecentMatches> = [];
+  let topPlayers: ReturnType<typeof getLeaderboard> = [];
+  let clans: ReturnType<typeof listClans> = [];
+
+  try {
+    user = getCurrentUser();
+  } catch (err) {
+    console.error("HomePage: Failed to get current user:", err);
+  }
+
+  try {
+    stats = getPlatformStats();
+  } catch (err) {
+    console.error("HomePage: Failed to get platform stats:", err);
+  }
+
+  try {
+    tournaments = listTournaments().slice(0, 6);
+  } catch (err) {
+    console.error("HomePage: Failed to list tournaments:", err);
+  }
+
+  try {
+    liveMatches = getLiveAndRecentMatches(4);
+  } catch (err) {
+    console.error("HomePage: Failed to get live matches:", err);
+  }
+
+  try {
+    topPlayers = getLeaderboard({ limit: 5 });
+  } catch (err) {
+    console.error("HomePage: Failed to get leaderboard:", err);
+  }
+
+  try {
+    clans = listClans({ limit: 3 });
+  } catch (err) {
+    console.error("HomePage: Failed to list clans:", err);
+  }
 
   return (
     <div className="space-y-16 pb-16">

@@ -9,10 +9,18 @@ export default function TournamentDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const tournament = getTournamentBySlugOrId(params.slug);
+  let tournament = null;
+  try {
+    tournament = getTournamentBySlugOrId(params.slug);
+  } catch (err) {
+    console.error("TournamentDetailPage error:", err);
+  }
   if (!tournament) {
     notFound();
   }
-  const user = getCurrentUser();
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
   return <TournamentDetailClient tournament={tournament} currentUser={user} initialTab="OVERVIEW" />;
 }

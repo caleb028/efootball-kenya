@@ -9,9 +9,18 @@ export default function MarketplaceOrderDetailPage({
 }: {
   params: { orderId: string };
 }) {
-  const user = getCurrentUser();
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
   if (!user) redirect("/login");
-  const order = getMarketplaceOrderById(params.orderId, user);
+
+  let order = null;
+  try {
+    order = getMarketplaceOrderById(params.orderId, user);
+  } catch (err) {
+    console.error("MarketplaceOrderDetailPage error:", err);
+  }
   if (!order) notFound();
   return <OrderDetailClient order={order} currentUser={user} />;
 }

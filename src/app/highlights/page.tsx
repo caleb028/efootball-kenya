@@ -5,11 +5,31 @@ import { listArticles, listCommunityEvents } from "@/lib/services/clans-communit
 import { listTournaments } from "@/lib/services/tournaments";
 
 export default function HighlightsPage() {
-  const highlights = listArticles({ highlightsOnly: true });
-  const communityHighlights = listCommunityEvents(12).filter(
-    (e) => e.eventType === "HIGHLIGHT" || e.eventType === "NEW_CHAMPION"
-  );
-  const streamedTournaments = listTournaments().filter((t) => Boolean(t.livestreamUrl));
+  let highlights: ReturnType<typeof listArticles> = [];
+  let communityHighlights: ReturnType<typeof listCommunityEvents> = [];
+  let streamedTournaments: ReturnType<typeof listTournaments> = [];
+
+  try {
+    highlights = listArticles({ highlightsOnly: true }) || [];
+  } catch (err) {
+    console.error("HighlightsPage listArticles error:", err);
+  }
+
+  try {
+    const rawEvents = listCommunityEvents(12) || [];
+    communityHighlights = rawEvents.filter(
+      (e) => e && (e.eventType === "HIGHLIGHT" || e.eventType === "NEW_CHAMPION")
+    );
+  } catch (err) {
+    console.error("HighlightsPage listCommunityEvents error:", err);
+  }
+
+  try {
+    const rawTournaments = listTournaments() || [];
+    streamedTournaments = rawTournaments.filter((t) => Boolean(t && t.livestreamUrl));
+  } catch (err) {
+    console.error("HighlightsPage listTournaments error:", err);
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">

@@ -31,7 +31,11 @@ export function PlayerProfileClient({
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const isOwnProfile = currentUser?.id === profile.id;
+  const matchHistory = Array.isArray(profile?.matchHistory) ? profile.matchHistory : [];
+  const tournaments = Array.isArray(profile?.tournaments) ? profile.tournaments : [];
+  const achievements = Array.isArray(profile?.achievements) ? profile.achievements : [];
+
+  const isOwnProfile = currentUser?.id === profile?.id;
 
   async function handleFollow() {
     setFeedback(null);
@@ -266,11 +270,11 @@ export function PlayerProfileClient({
             <h2 className="font-display font-bold text-xl uppercase text-brand-yellow">
               Recent Verified Matches
             </h2>
-            {profile.matchHistory.length === 0 ? (
+            {matchHistory.length === 0 ? (
               <p className="text-xs text-brand-grey">No matches completed yet.</p>
             ) : (
               <div className="space-y-2.5">
-                {profile.matchHistory.slice(0, 5).map((m: any) => (
+                {matchHistory.slice(0, 5).map((m: any) => (
                   <Link
                     key={m.id}
                     href={`/matches/${m.id}`}
@@ -297,13 +301,13 @@ export function PlayerProfileClient({
             <h2 className="font-display font-bold text-xl uppercase text-brand-yellow">
               Earned Achievement Badges
             </h2>
-            {profile.achievements.length === 0 ? (
+            {achievements.length === 0 ? (
               <p className="text-xs text-brand-grey">
                 Achievements are unlocked automatically from verified match wins and championships.
               </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {profile.achievements.map((a: any) => (
+                {achievements.map((a: any) => (
                   <div
                     key={a.id}
                     className="p-3.5 rounded-xl bg-brand-navy border border-brand-yellow/50 space-y-1"
@@ -325,10 +329,10 @@ export function PlayerProfileClient({
 
       {activeTab === "MATCH_HISTORY" && (
         <div className="esports-card p-6 space-y-3">
-          {profile.matchHistory.length === 0 ? (
+          {matchHistory.length === 0 ? (
             <p className="text-sm text-brand-grey">No match history recorded yet.</p>
           ) : (
-            profile.matchHistory.map((m: any) => (
+            matchHistory.map((m: any) => (
               <Link
                 key={m.id}
                 href={`/matches/${m.id}`}
@@ -355,10 +359,10 @@ export function PlayerProfileClient({
 
       {activeTab === "TOURNAMENTS" && (
         <div className="esports-card p-6 space-y-3">
-          {profile.tournaments.length === 0 ? (
+          {tournaments.length === 0 ? (
             <p className="text-sm text-brand-grey">No tournament entries yet.</p>
           ) : (
-            profile.tournaments.map((t: any) => (
+            tournaments.map((t: any) => (
               <Link
                 key={t.id}
                 href={`/tournaments/${t.slug}`}
@@ -382,12 +386,12 @@ export function PlayerProfileClient({
 
       {activeTab === "ACHIEVEMENTS" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {profile.achievements.length === 0 ? (
+          {achievements.length === 0 ? (
             <div className="esports-card p-8 text-center col-span-full text-sm text-brand-grey">
               No badges earned yet. Win verified tournament matches to unlock badges!
             </div>
           ) : (
-            profile.achievements.map((a: any) => (
+            achievements.map((a: any) => (
               <div key={a.id} className="esports-card p-5 space-y-2 border-brand-yellow/60">
                 <div className="flex items-center justify-between">
                   <span className="esports-badge-yellow">{a.tier} BADGE</span>

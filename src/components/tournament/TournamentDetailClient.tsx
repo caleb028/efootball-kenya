@@ -40,21 +40,30 @@ export function TournamentDetailClient({
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
 
+  const t = tournament || {};
+  const participants = Array.isArray(t.participants) ? t.participants : [];
+  const waitlist = Array.isArray(t.waitlist) ? t.waitlist : [];
+  const matches = Array.isArray(t.matches) ? t.matches : [];
+  const announcements = Array.isArray(t.announcements) ? t.announcements : [];
+  const groups = Array.isArray(t.groups) ? t.groups : [];
+
+  const currentUserRoles = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
+
   const isRegistered =
     currentUser &&
-    tournament.participants.some((p: any) => p.userId === currentUser.id);
+    participants.some((p: any) => p.userId === currentUser.id);
   const isWaitlisted =
     currentUser &&
-    tournament.waitlist.some((p: any) => p.userId === currentUser.id);
+    waitlist.some((p: any) => p.userId === currentUser.id);
 
   const canManage =
     currentUser &&
-    (currentUser.id === tournament.organiserId ||
-      currentUser.roles?.includes("TOURNAMENT_ADMIN") ||
-      currentUser.roles?.includes("SUPER_ADMIN"));
+    (currentUser.id === t.organiserId ||
+      currentUserRoles.includes("TOURNAMENT_ADMIN") ||
+      currentUserRoles.includes("SUPER_ADMIN"));
 
   async function refreshTournament() {
-    const res = await fetch(`/api/tournaments/${tournament.slug}`);
+    const res = await fetch(`/api/tournaments/${t.slug}`);
     if (res.ok) {
       const data = await res.json();
       setTournament(data.tournament);
@@ -65,7 +74,7 @@ export function TournamentDetailClient({
     setFeedback(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/tournaments/${tournament.slug}`, {
+      const res = await fetch(`/api/tournaments/${t.slug}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
@@ -90,7 +99,7 @@ export function TournamentDetailClient({
     setFeedback(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/tournaments/${tournament.slug}`, {
+      const res = await fetch(`/api/tournaments/${t.slug}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,7 +126,7 @@ export function TournamentDetailClient({
 
   // Group knockout matches by roundLabel for interactive bracket rendering
   const roundMap = new Map<string, any[]>();
-  for (const m of tournament.matches) {
+  for (const m of matches) {
     if (!roundMap.has(m.roundLabel)) {
       roundMap.set(m.roundLabel, []);
     }
@@ -127,20 +136,20 @@ export function TournamentDetailClient({
 
   const tabs = [
     { id: "OVERVIEW", label: "Overview" },
-    { id: "PARTICIPANTS", label: `Participants (${tournament.registeredCount})` },
+    { id: "PARTICIPANTS", label: `Participants (${participants.length})` },
     { id: "BRACKET", label: "Bracket & Standings" },
-    { id: "FIXTURES", label: `Fixtures (${tournament.matches.length})` },
+    { id: "FIXTURES", label: `Fixtures (${matches.length})` },
     {
       id: "RESULTS",
       label: `Results (${
-        tournament.matches.filter(
+        matches.filter(
           (m: any) => m.status === "COMPLETED" || m.status === "WALKOVER"
         ).length
       })`,
     },
     { id: "RULES", label: "Rules" },
     { id: "PRIZES", label: "Prizes" },
-    { id: "ANNOUNCEMENTS", label: `Announcements (${tournament.announcements.length})` },
+    { id: "ANNOUNCEMENTS", label: `Announcements (${announcements.length})` },
   ];
 
   const isOpen =
@@ -401,7 +410,7 @@ export function TournamentDetailClient({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-brand-royal/25">
-                    {tournament.participants.map((p: any, idx: number) => (
+                    {participants.map((p: any, idx: number) => (
                       <tr key={p.userId} className="hover:bg-brand-royal/15">
                         <td className="py-3 px-4 font-display font-bold text-brand-yellow">
                           #{p.seed ?? idx + 1}
@@ -433,7 +442,7 @@ export function TournamentDetailClient({
                 Official Waitlist ({tournament.waitlist.length})
               </h3>
               <div className="flex flex-wrap gap-2">
-                {tournament.waitlist.map((w: any, i: number) => (
+                {waitlist.map((w: any, i: number) => (
                   <span
                     key={w.userId}
                     className="px-3 py-1.5 rounded-lg bg-brand-navy border border-brand-royal/40 text-xs text-white"
@@ -660,7 +669,7 @@ export function TournamentDetailClient({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tournament.matches.map((m: any) => (
+              {matches.map((m: any) => (
                 <div
                   key={m.id}
                   className="esports-card p-4 flex items-center justify-between gap-4"
@@ -806,7 +815,7 @@ export function TournamentDetailClient({
             </div>
           ) : (
             <div className="space-y-3">
-              {tournament.announcements.map((a: any) => (
+              {announcements.map((a: any) => (
                 <div key={a.id} className="esports-card p-5 space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-brand-grey">
                     <span className="text-brand-yellow font-bold">

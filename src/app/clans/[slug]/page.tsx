@@ -9,8 +9,16 @@ export default function ClanDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const clan = getClanBySlugOrId(params.slug);
+  let clan = null;
+  try {
+    clan = getClanBySlugOrId(params.slug);
+  } catch (err) {
+    console.error("ClanDetailPage error:", err);
+  }
   if (!clan) notFound();
-  const user = getCurrentUser();
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
   return <ClanDetailClient clan={clan} currentUser={user} />;
 }

@@ -13,10 +13,14 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(false);
 
   async function fetchFeed() {
-    const res = await fetch("/api/community");
-    if (res.ok) {
-      const data = await res.json();
-      setEvents(data.events || []);
+    try {
+      const res = await fetch("/api/community");
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(Array.isArray(data.events) ? data.events : []);
+      }
+    } catch (err) {
+      console.error("fetchFeed error:", err);
     }
   }
 
@@ -54,27 +58,35 @@ export default function CommunityPage() {
   }
 
   async function handleReact(eventId: string) {
-    const res = await fetch("/api/community", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "REACT", eventId }),
-    });
-    if (res.ok) {
-      await fetchFeed();
+    try {
+      const res = await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "REACT", eventId }),
+      });
+      if (res.ok) {
+        await fetchFeed();
+      }
+    } catch (err) {
+      console.error("handleReact error:", err);
     }
   }
 
   async function handleComment(eventId: string) {
     const content = commentTextMap[eventId];
     if (!content?.trim()) return;
-    const res = await fetch("/api/community", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "COMMENT", eventId, content }),
-    });
-    if (res.ok) {
-      setCommentTextMap((m) => ({ ...m, [eventId]: "" }));
-      await fetchFeed();
+    try {
+      const res = await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "COMMENT", eventId, content }),
+      });
+      if (res.ok) {
+        setCommentTextMap((m) => ({ ...m, [eventId]: "" }));
+        await fetchFeed();
+      }
+    } catch (err) {
+      console.error("handleComment error:", err);
     }
   }
 
@@ -180,18 +192,18 @@ export default function CommunityPage() {
                   </button>
                   <span className="text-brand-grey flex items-center gap-1">
                     <MessageSquare className="w-4 h-4" />
-                    {ev.comments.length} Comments
+                    {Array.isArray(ev.comments) ? ev.comments.length : 0} Comments
                   </span>
                 </div>
 
-                {ev.comments.length > 0 && (
+                {Array.isArray(ev.comments) && ev.comments.length > 0 && (
                   <div className="space-y-2 pl-3 border-l-2 border-brand-royal/50">
                     {ev.comments.map((c: any) => (
-                      <div key={c.id} className="text-xs">
+                      <div key={c?.id || Math.random()} className="text-xs">
                         <span className="font-bold text-brand-yellow mr-1.5">
-                          {c.authorUsername}:
+                          {c?.authorUsername || "Player"}:
                         </span>
-                        <span className="text-white/90">{c.content}</span>
+                        <span className="text-white/90">{c?.content || ""}</span>
                       </div>
                     ))}
                   </div>

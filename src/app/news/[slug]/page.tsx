@@ -8,7 +8,12 @@ export default function ArticleDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const article = getArticleBySlug(params.slug);
+  let article = null;
+  try {
+    article = getArticleBySlug(params.slug);
+  } catch (err) {
+    console.error("ArticleDetailPage error:", err);
+  }
   if (!article) notFound();
 
   return (

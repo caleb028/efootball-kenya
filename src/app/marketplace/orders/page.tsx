@@ -6,9 +6,18 @@ import { listMarketplaceOrdersForUser } from "@/lib/services/marketplace-finance
 import { Package } from "lucide-react";
 
 export default function MarketplaceOrdersPage() {
-  const user = getCurrentUser();
+  let user = null;
+  try {
+    user = getCurrentUser();
+  } catch {}
   if (!user) redirect("/login");
-  const orders = listMarketplaceOrdersForUser(user);
+
+  let orders: ReturnType<typeof listMarketplaceOrdersForUser> = [];
+  try {
+    orders = listMarketplaceOrdersForUser(user) || [];
+  } catch (err) {
+    console.error("MarketplaceOrdersPage error:", err);
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
@@ -51,7 +60,7 @@ export default function MarketplaceOrdersPage() {
               </div>
               <div className="text-right">
                 <div className="font-display font-bold text-lg text-brand-yellow">
-                  KES {o.amountKes.toLocaleString()}
+                  KES {(o.amountKes ?? 0).toLocaleString()}
                 </div>
                 <span className="esports-badge-blue mt-1">{o.status}</span>
               </div>

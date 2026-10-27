@@ -45,6 +45,10 @@ export function MatchRoomClient({
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  const submissions = Array.isArray(match?.submissions) ? match.submissions : [];
+  const evidence = Array.isArray(match?.evidence) ? match.evidence : [];
+  const disputes = Array.isArray(match?.disputes) ? match.disputes : [];
+
   const isParticipant =
     currentUser &&
     (currentUser.id === match.playerOne?.id || currentUser.id === match.playerTwo?.id);
@@ -476,13 +480,13 @@ export function MatchRoomClient({
           {/* Submitted Reports Log */}
           <div className="esports-card p-6 space-y-4">
             <h3 className="font-display font-bold text-xl uppercase text-white">
-              Player Score Submissions ({match.submissions.length} / 2)
+              Player Score Submissions ({submissions.length} / 2)
             </h3>
-            {match.submissions.length === 0 ? (
+            {submissions.length === 0 ? (
               <p className="text-xs text-brand-grey">No score reports submitted yet.</p>
             ) : (
               <div className="space-y-2.5">
-                {match.submissions.map((sub: any) => (
+                {submissions.map((sub: any) => (
                   <div
                     key={sub.id}
                     className="p-3.5 rounded-lg bg-brand-navy border border-brand-royal/40 flex items-center justify-between text-xs"
@@ -536,13 +540,13 @@ export function MatchRoomClient({
                 privately and are only visible to the match participants, tournament organiser, and
                 authorised moderators.
               </p>
-            ) : match.evidence.length === 0 ? (
+            ) : evidence.length === 0 ? (
               <p className="text-xs text-brand-grey">
                 No private screenshots or video proofs uploaded yet.
               </p>
             ) : (
               <div className="space-y-2.5">
-                {match.evidence.map((ev: any) => (
+                {evidence.map((ev: any) => (
                   <div
                     key={ev.id}
                     className="p-3 rounded-lg bg-brand-navy border border-brand-royal/40 text-xs space-y-1.5"
@@ -574,9 +578,9 @@ export function MatchRoomClient({
               Dispute & No-Show Centre
             </h3>
 
-            {match.disputes.length > 0 && (
+            {disputes.length > 0 && (
               <div className="space-y-3">
-                {match.disputes.map((d: any) => (
+                {disputes.map((d: any) => (
                   <div
                     key={d.id}
                     className="p-3.5 rounded-lg bg-brand-error/15 border border-brand-error/50 text-xs space-y-2"
